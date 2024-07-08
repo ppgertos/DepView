@@ -2,6 +2,8 @@
 
 A minimal dependency diagram viewer.
 
+![Screenshot](https://raw.githubusercontent.com/ppgertos/DepView/master/doc/depView.gif)
+
 ## Key Features
 
 * Parses logs in specific syntax. Sample log file to be found in `test` directory;
