@@ -1,0 +1,15 @@
+#
+# rgl layout text file (v4.0) - raygui layout file generated using rGuiLayout
+#
+# Number of controls:     5
+#
+# Ref. window:    r <x> <y> <width> <height>
+# Anchor info:    a <id> <name> <posx> <posy> <enabled>
+# Control info:   c <id> <type> <name> <rectangle> <anchor_id> <text>
+#
+r 0 40 -1 -1
+c 000 16 Slider000 120 72 680 16 0 Chosen Frame
+c 001 4 Label001 32 32 144 24 0 2024-06-17T21:41:35+0200
+c 002 12 TextBox002 376 32 304 24 0 FilePath
+c 003 5 Button003 696 32 104 24 0 LOAD FILE
+c 004 20 ScrollPanel004 32 104 768 536 0 

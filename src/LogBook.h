@@ -1,0 +1,33 @@
+#pragma once
+
+#include "StringContainer.h"
+#include <time.h>
+
+typedef enum {
+  EOperation_Add,
+  EOperation_StatusChange,
+  EOperation_AddDependency,
+  EOperation_RemoveDependency,
+  EOperation_Remove,
+  EOperation_None
+} EOperation;
+
+typedef enum { EStatus_Waiting, EStatus_Ongoing, EStatus_Finished } EStatus;
+
+typedef struct LogEntry{
+  EOperation operation;
+  EStatus status;
+  time_t timestamp;
+  size_t nodeName;
+  size_t dependencies[128];
+} LogEntry;
+
+typedef struct LogBook{
+	LogEntry* entries;
+	size_t entriesSize;
+	StringContainer nodeNames;
+} LogBook;
+
+LogBook LogBook_Make(const char *fileName);
+char* LogBook_GetNodeName(const LogBook *this, const size_t offset);
+
