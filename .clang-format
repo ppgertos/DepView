@@ -1,0 +1,17 @@
+---
+Language:      Cpp
+BasedOnStyle:  Chromium
+ColumnLimit:   120
+IncludeCategories:
+  - Regex:           '^".*\.h"'
+    Priority:        1
+    SortPriority:    0
+    CaseSensitive:   false
+  - Regex:           '^<.*\.h>'
+    Priority:        2
+    SortPriority:    0
+    CaseSensitive:   false
+  - Regex:           '^<.*>'
+    Priority:        2
+    SortPriority:    0
+    CaseSensitive:   false

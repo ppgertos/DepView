@@ -4,8 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-static size_t SizeTContainer_Allocated(const SizeTContainer *this);
-static size_t SizeTContainer_Available(const SizeTContainer *this);
+static size_t SizeTContainer_Allocated(const SizeTContainer* this);
+static size_t SizeTContainer_Available(const SizeTContainer* this);
 
 SizeTContainer SizeTContainer_Make() {
   SizeTContainer this;
@@ -15,20 +15,19 @@ SizeTContainer SizeTContainer_Make() {
   return this;
 }
 
-void SizeTContainer_Destroy(SizeTContainer *this) {
-  if (this->begin)
-  {
-	free(this->begin);
+void SizeTContainer_Destroy(SizeTContainer* this) {
+  if (this->begin) {
+    free(this->begin);
   }
   this->begin = NULL;
   this->end = NULL;
   this->alloc_end = NULL;
 }
 
-void SizeTContainer_Append(SizeTContainer *this, size_t newVal) {
+void SizeTContainer_Append(SizeTContainer* this, size_t newVal) {
   while (SizeTContainer_Available(this) < 1) {
     size_t capacityDoubled = SizeTContainer_Allocated(this);
-	capacityDoubled = capacityDoubled == 0 ? 1 : capacityDoubled * 2;
+    capacityDoubled = capacityDoubled == 0 ? 1 : capacityDoubled * 2;
     const size_t used = SizeTContainer_Used(this);
     this->begin = realloc(this->begin, capacityDoubled * sizeof(size_t));
     if (this->begin == NULL) {
@@ -45,14 +44,14 @@ void SizeTContainer_Append(SizeTContainer *this, size_t newVal) {
   printf("Added %ld\n", newVal);
 }
 
-static size_t SizeTContainer_Allocated(const SizeTContainer *this) {
+static size_t SizeTContainer_Allocated(const SizeTContainer* this) {
   return this->alloc_end - this->begin;
 }
 
-size_t SizeTContainer_Used(const SizeTContainer *this) {
+size_t SizeTContainer_Used(const SizeTContainer* this) {
   return this->end - this->begin;
 }
 
-static size_t SizeTContainer_Available(const SizeTContainer *this) {
+static size_t SizeTContainer_Available(const SizeTContainer* this) {
   return this->alloc_end - this->end;
 }

@@ -6,8 +6,8 @@
 #include "SizeTContainer.h"
 #include "StringContainer.h"
 
-static size_t StringContainer_Allocated(StringContainer *this);
-static size_t StringContainer_Available(StringContainer *this);
+static size_t StringContainer_Allocated(StringContainer* this);
+static size_t StringContainer_Available(StringContainer* this);
 
 StringContainer StringContainer_Make() {
   StringContainer this;
@@ -18,7 +18,7 @@ StringContainer StringContainer_Make() {
   return this;
 }
 
-void StringContainer_Destroy(StringContainer *this) {
+void StringContainer_Destroy(StringContainer* this) {
   if (this->begin) {
     free(this->begin);
   }
@@ -28,12 +28,12 @@ void StringContainer_Destroy(StringContainer *this) {
   SizeTContainer_Destroy(&this->offsets);
 }
 
-const char *StringContainer_At(const StringContainer *this, size_t index) {
+const char* StringContainer_At(const StringContainer* this, size_t index) {
   return &this->begin[this->offsets.begin[index]];
 }
 
-void StringContainer_Append(StringContainer *this, char *newString) {
-  char *newStringEnd = strchr(newString, '\0');
+void StringContainer_Append(StringContainer* this, char* newString) {
+  char* newStringEnd = strchr(newString, '\0');
   if (!newStringEnd) {
     perror("Cannot find NULL char in newString");
     exit(10);
@@ -59,21 +59,20 @@ void StringContainer_Append(StringContainer *this, char *newString) {
   this->end = this->begin + StringContainer_Used(this) + newStringLength + 1;
 }
 
-void StringContainer_Print(const StringContainer *this) {
+void StringContainer_Print(const StringContainer* this) {
   for (size_t i = 0; i < SizeTContainer_Used(&this->offsets); ++i) {
-    printf("%ld (%zu): %s\n", i, this->offsets.begin[i],
-           StringContainer_At(this, i));
+    printf("%ld (%zu): %s\n", i, this->offsets.begin[i], StringContainer_At(this, i));
   }
 }
 
-static size_t StringContainer_Allocated(StringContainer *this) {
+static size_t StringContainer_Allocated(StringContainer* this) {
   return this->alloc_end - this->begin;
 }
 
-size_t StringContainer_Used(StringContainer *this) {
+size_t StringContainer_Used(StringContainer* this) {
   return this->end - this->begin;
 }
 
-static size_t StringContainer_Available(StringContainer *this) {
+static size_t StringContainer_Available(StringContainer* this) {
   return this->alloc_end - this->end;
 }

@@ -9,15 +9,14 @@
 #include <string.h>
 #include <time.h>
 
-static LogEntry LogBook_MakeEntryFromString(LogBook *this, char *line);
-static void LogBook_MakeDependencies(LogBook *this, LogEntry *le,
-                                     char *fieldBegin, char *fieldEnd);
-static size_t LogBook_FindNodeNameOffset(LogBook *this, const char *name);
+static LogEntry LogBook_MakeEntryFromString(LogBook* this, char* line);
+static void LogBook_MakeDependencies(LogBook* this, LogEntry* le, char* fieldBegin, char* fieldEnd);
+static size_t LogBook_FindNodeNameOffset(LogBook* this, const char* name);
 
-LogBook LogBook_Make(const char *fileName) {
+LogBook LogBook_Make(const char* fileName) {
   LogBook this;
   this.entriesSize = 0;
-  FILE *fptr = fopen(fileName, "r");
+  FILE* fptr = fopen(fileName, "r");
   if (fptr == NULL) {
     perror("Cannot read file: ");
     perror(fileName);
@@ -54,15 +53,15 @@ LogBook LogBook_Make(const char *fileName) {
   return this;
 }
 
-LogEntry LogBook_MakeEntryFromString(LogBook *this, char *buffer) {
-  char *fieldBegin = buffer;
+LogEntry LogBook_MakeEntryFromString(LogBook* this, char* buffer) {
+  char* fieldBegin = buffer;
   LogEntry le;
   memset(&le.dependencies, '\0', sizeof(le.dependencies));
-  char *fieldEnd = strchr(buffer, ' ');
+  char* fieldEnd = strchr(buffer, ' ');
   *fieldEnd = '\0';
   struct tm tm;
   memset(&tm, '\0', sizeof(struct tm));
-  char *isOk = strptime(fieldBegin, "%Y-%m-%dT%H:%M:%S%z", &tm);
+  char* isOk = strptime(fieldBegin, "%Y-%m-%dT%H:%M:%S%z", &tm);
   if (isOk == NULL) {
     perror("Unable to read timestamp at:\n");
     perror(buffer);
@@ -84,13 +83,13 @@ LogEntry LogBook_MakeEntryFromString(LogBook *this, char *buffer) {
     fieldEnd = strchr(fieldBegin, ' ');
     *fieldEnd = '\0';
     switch (fieldBegin[0]) {
-    case 'o':
-      le.status = EStatus_Ongoing;
-      break;
-    case 'w':
-    default:
-      le.status = EStatus_Waiting;
-      break;
+      case 'o':
+        le.status = EStatus_Ongoing;
+        break;
+      case 'w':
+      default:
+        le.status = EStatus_Waiting;
+        break;
     }
     fieldBegin = strchr(fieldEnd + 1, '[');
     fieldEnd = strchr(fieldBegin, ']');
@@ -108,13 +107,13 @@ LogEntry LogBook_MakeEntryFromString(LogBook *this, char *buffer) {
     fieldEnd = strchr(fieldBegin, '\n');
     *fieldEnd = '\0';
     switch (fieldBegin[0]) {
-    case 'o':
-      le.status = EStatus_Ongoing;
-      break;
-    case 'w':
-    default:
-      le.status = EStatus_Waiting;
-      break;
+      case 'o':
+        le.status = EStatus_Ongoing;
+        break;
+      case 'w':
+      default:
+        le.status = EStatus_Waiting;
+        break;
     }
     printf("new status of %s: %d\n", LogBook_GetNodeName(this, le.nodeName), le.status);
     return le;
@@ -134,12 +133,11 @@ LogEntry LogBook_MakeEntryFromString(LogBook *this, char *buffer) {
   return le;
 }
 
-void LogBook_MakeDependencies(LogBook *this, LogEntry *logEntry, char *begin,
-                              char *end) {
-  const char *nameBegin = begin;
+void LogBook_MakeDependencies(LogBook* this, LogEntry* logEntry, char* begin, char* end) {
+  const char* nameBegin = begin;
   size_t nextDependency = 0;
   while (nameBegin < end) {
-    char *nameEnd = strchr(nameBegin, ',');
+    char* nameEnd = strchr(nameBegin, ',');
     if (nameEnd == NULL) {
       nameEnd = end;
     } else {
@@ -147,8 +145,7 @@ void LogBook_MakeDependencies(LogBook *this, LogEntry *logEntry, char *begin,
     }
 
     fprintf(stdout, "dependencies[%ld]: %s\n", nextDependency, nameBegin);
-    logEntry->dependencies[nextDependency++] =
-        LogBook_FindNodeNameOffset(this, nameBegin);
+    logEntry->dependencies[nextDependency++] = LogBook_FindNodeNameOffset(this, nameBegin);
     if (nameEnd + 1 < end) {
       nameBegin = strchr(nameEnd + 1, ' ');
       if (nameBegin == NULL) {
@@ -163,13 +160,13 @@ void LogBook_MakeDependencies(LogBook *this, LogEntry *logEntry, char *begin,
   logEntry->dependencies[nextDependency] = (size_t)-1;
 }
 
-char *LogBook_GetNodeName(const LogBook *this, const size_t offset) {
+char* LogBook_GetNodeName(const LogBook* this, const size_t offset) {
   return &this->nodeNames.begin[offset];
 }
 
-static size_t LogBook_FindNodeNameOffset(LogBook *this, const char *name) {
+static size_t LogBook_FindNodeNameOffset(LogBook* this, const char* name) {
   for (size_t i = 0; i < SizeTContainer_Used(&this->nodeNames.offsets); ++i) {
-    const char *current = StringContainer_At(&this->nodeNames, i);
+    const char* current = StringContainer_At(&this->nodeNames, i);
     if (0 == strcmp(current, name)) {
       return current - this->nodeNames.begin;
     }
