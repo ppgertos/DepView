@@ -1,0 +1,13 @@
+diff --git a/examples/custom_file_dialog/gui_window_file_dialog.h b/examples/custom_file_dialog/gui_window_file_dialog.h
+index 769e095..6c25ddb 100644
+--- a/examples/custom_file_dialog/gui_window_file_dialog.h
++++ b/examples/custom_file_dialog/gui_window_file_dialog.h
+@@ -117,7 +117,7 @@ void GuiWindowFileDialog(GuiWindowFileDialogState *state);
+ ************************************************************************************/
+ #if defined(GUI_WINDOW_FILE_DIALOG_IMPLEMENTATION)
+ 
+-#include "../../src/raygui.h"
++#include <raygui.h>
+ 
+ #include <string.h>     // Required for: strcpy()
+ 

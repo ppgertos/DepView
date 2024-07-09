@@ -6,6 +6,8 @@ then
     exit 1
 fi
 
+export PROJECT_DIR=$PWD
+
 if [ ! -d '3rdparty' ]
 then
 	mkdir 3rdparty
@@ -20,7 +22,7 @@ fi
 echo "Extracting raylib"
 tar -xvf raylib-5.0_linux_amd64.tar.gz --transform='s#raylib-5.0_linux_amd64/##' raylib-5.0_linux_amd64/include raylib-5.0_linux_amd64/lib
 
-stat 'include/raygui.h' &> /dev/null
+stat 'include/raygui.h' &> /dev/null && stat 'include/gui_window_file_dialog.h' &> /dev/null
 if [[ 0 -ne $? ]]
 then
 	if [ ! -d 'repos' ]
@@ -29,7 +31,8 @@ then
 	fi
 	cd repos
 
-	git clone --depth 1 --branch 4.0 https://github.com/raysan5/raygui.git
+	git clone --depth 1 --branch 4.0 https://github.com/raysan5/raygui.git &&
+    patch raygui/examples/custom_file_dialog/gui_window_file_dialog.h -i ${PROJECT_DIR}/scripts/file_dialog_patch.diff
 	cd ..
 	ln -s ../repos/raygui/src/raygui.h include/raygui.h
 	ln -s ../repos/raygui/examples/custom_file_dialog/gui_window_file_dialog.h include/gui_window_file_dialog.h
