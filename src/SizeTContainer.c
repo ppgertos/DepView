@@ -36,7 +36,7 @@ void SizeTContainer_Append(SizeTContainer* this, size_t newVal) {
     }
     this->alloc_end = this->begin + capacityDoubled;
     this->end = this->begin + used;
-    memset(this->end, SizeTContainer_Available(this), '\0');
+    memset(this->end, '\0', SizeTContainer_Available(this));
   }
 
   *this->end = newVal;

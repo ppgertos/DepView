@@ -50,7 +50,7 @@ void StringContainer_Append(StringContainer* this, char* newString) {
     }
     this->alloc_end = this->begin + allocatedDoubled;
     this->end = this->begin + used;
-    memset(this->end, StringContainer_Available(this), '\0');
+    memset(this->end, '\0', StringContainer_Available(this));
   }
 
   printf("Added %s name\n", newString);

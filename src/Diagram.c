@@ -48,7 +48,7 @@ Diagram Diagram_Make(const struct LogBook* logBook, size_t currentLogIndex) {
   }
   this.nodes = calloc(maxNodesNumber, sizeof(Node));
   this.edges = calloc(maxNodesNumber * (maxNodesNumber - 1), sizeof(Edge));
-  printf("calloc(%ld, %ld) : %p \n", maxNodesNumber, sizeof(Node), this.nodes);
+  printf("calloc(%ld, %ld) : %p \n", maxNodesNumber, sizeof(Node), (void*)this.nodes);
   size_t nextNode = 0;
   size_t nextEdge = 0;
 

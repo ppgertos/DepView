@@ -23,7 +23,7 @@ LogBook LogBook_Make(const char* fileName) {
     exit(1);
   }
   char buffer[128];
-  memset(buffer, 0, 128);
+  memset(buffer, '\0', 128);
   while (fgets(buffer, sizeof(buffer), fptr)) {
     ++this.entriesSize;
   }

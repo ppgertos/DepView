@@ -22,14 +22,11 @@ $ git clone https://github.com/ppgertos/DepView
 # Go into the repository
 $ cd DepView
 
-# Install dependencies
-$ sh ./scripts/download_3rdParty.sh
-
 # Build app
-$ mkdir build && cd build && cmake .. && cmake --build . -t DepView
+$ mkdir build && cmake -B build -S . && cmake --build build --target DepView
 
 # Run the app
-$ ./DepView
+$ ./build/DepView
 ```
 
 In opened window click "LOAD FILE" and choose file with logs for which you want to see dependency graph. For example `DepView/test/sample_list`

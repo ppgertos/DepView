@@ -2,6 +2,9 @@
 #include "LogBook.h"
 
 #define RAYGUI_IMPLEMENTATION
+#include <raygui.h>
+#undef RAYGUI_IMPLEMENTATION
+
 #define GUI_WINDOW_FILE_DIALOG_IMPLEMENTATION
 #include <gui_window_file_dialog.h>
 
@@ -10,6 +13,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+typedef struct DiagramStyle {
+  const float VERT_PADDING;
+  const float HORI_PADDING;
+  const float NODE_H;
+  const float NODE_W;
+  const float MARGIN;
+} DiagramStyle;
+
+struct DiagramStyle DiagramStyle_Default() {
+  return (DiagramStyle){
+      .VERT_PADDING = 10,
+      .HORI_PADDING = 20,
+      .NODE_H = 40,
+      .NODE_W = 120,
+      .MARGIN = 20,
+  };
+}
 
 typedef struct Gui {
   int screenWidth;
@@ -33,19 +54,6 @@ typedef struct AppContext {
   Gui gui;
 } AppContext;
 
-typedef struct DiagramStyle {
-  const float VERT_PADDING;
-  const float HORI_PADDING;
-  const float NODE_H;
-  const float NODE_W;
-  const float MARGIN;
-} DiagramStyle;
-
-struct DiagramStyle DiagramStyle_Default() {
-  DiagramStyle ds = {.VERT_PADDING = 10, .HORI_PADDING = 20, .NODE_H = 40, .NODE_W = 120, .MARGIN = 20};
-  return ds;
-}
-
 //----------------------------------------------------------------------------------
 // Controls Functions Declaration
 //----------------------------------------------------------------------------------
@@ -54,7 +62,6 @@ static void AppContext_Loop(AppContext* app);
 static void AppContext_Draw(AppContext* app);
 static void AppContext_Destroy(AppContext* this);
 static void AppContext_LoadLog(AppContext* appContext, char* fileName);
-static void BuildAppContextDiagram(AppContext* ctx, const LogEntry* const currentLog);
 static void DrawGraph(const LogBook* logBook, const Diagram* diagram, const Vector2* scrollOffset);
 
 //------------------------------------------------------------------------------------
@@ -94,7 +101,7 @@ static AppContext AppContext_Init() {
                           .scrollPanelView = {.x = 0, .y = 0, .width = 0, .height = 0},
                           .scrollPanelScrollOffset = {.x = 0, .y = 0},
                           .scrollPanelBoundsOffset = {.x = 0, .y = 0},
-                          .fileDialogState = InitGuiWindowFileDialog(""),
+                          .fileDialogState = InitGuiWindowFileDialog(NULL),
                           .diagramNeedsToChange = false}};
   return a;
 }
@@ -148,23 +155,19 @@ static void AppContext_Draw(AppContext* app) {
     app->gui.fileDialogState = InitGuiWindowFileDialog(app->gui.selectedFileName);
     app->gui.fileDialogState.windowActive = true;
   }
+
+  // Scroll Panel
   if (app->gui.fileDialogState.windowActive) {
     GuiSetState(STATE_DISABLED);
   }
-
-  // Scroll Panel
   const float PANEL_X = MARGIN;
   const float PANEL_Y = MARGIN + TOOLBAR_HEIGHT + 10;
   GuiScrollPanel((Rectangle){.x = PANEL_X,
                              .y = PANEL_Y,
                              .width = (app->gui.screenWidth - PANEL_X - MARGIN) - app->gui.scrollPanelBoundsOffset.x,
                              .height = (app->gui.screenHeight - MARGIN - PANEL_Y) - app->gui.scrollPanelBoundsOffset.y},
-                 NULL,
-                 (Rectangle){.x = 0,
-                             .y = 0,
-                             .width = app->gui.screenWidth - PANEL_X - MARGIN,
-                             .height = app->gui.screenHeight - MARGIN - PANEL_Y},
-                 &app->gui.scrollPanelScrollOffset, &app->gui.scrollPanelView);
+                 NULL, (Rectangle){.x = 0, .y = 0, .width = 800, .height = 600}, &app->gui.scrollPanelScrollOffset,
+                 &app->gui.scrollPanelView);
   GuiSetState(STATE_NORMAL);
   BeginScissorMode(app->gui.scrollPanelView.x, app->gui.scrollPanelView.y,
                    app->gui.scrollPanelView.width - app->gui.scrollPanelBoundsOffset.x,
