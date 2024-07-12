@@ -8,11 +8,13 @@
 static Node* Diagram_FindNode(Diagram const* diagram, size_t nodeName);
 
 void Diagram_Destroy(Diagram* this) {
+  free(this->edges);
+  this->edgesSize = 0;
   free(this->nodes);
   this->nodesSize = 0;
 }
 
-Diagram Diagram_Make(const struct LogBook* logBook, size_t currentLogIndex) {
+Diagram Diagram_Init(const struct LogBook* logBook, size_t currentLogIndex) {
   size_t nodesNumber = 0;
   size_t maxNodesNumber = 0;
 

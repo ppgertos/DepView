@@ -3,18 +3,19 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "SizeTContainer.h"
+#include "Container.h"
 #include "StringContainer.h"
 
 static size_t StringContainer_Allocated(StringContainer* this);
 static size_t StringContainer_Available(StringContainer* this);
 
-StringContainer StringContainer_Make() {
+StringContainer StringContainer_Init() {
   StringContainer this;
-  this.begin = malloc(1);
+  size_t container_size = 1;
+  this.begin = malloc(container_size);
   this.end = this.begin;
-  this.alloc_end = this.begin + 1;
-  this.offsets = SizeTContainer_Make();
+  this.alloc_end = this.begin + container_size;
+  this.offsets = DynamicArray_Make(size_t);
   return this;
 }
 
@@ -25,11 +26,15 @@ void StringContainer_Destroy(StringContainer* this) {
   this->begin = NULL;
   this->end = NULL;
   this->alloc_end = NULL;
-  SizeTContainer_Destroy(&this->offsets);
+  if (this->offsets) {
+    DynamicArray_Destroy(this->offsets);
+    free(this->offsets);
+  }
+  this->offsets = NULL;
 }
 
 const char* StringContainer_At(const StringContainer* this, size_t index) {
-  return &this->begin[this->offsets.begin[index]];
+  return &this->begin[DynamicArray_Begin(size_t, this->offsets)[index]];
 }
 
 void StringContainer_Append(StringContainer* this, char* newString) {
@@ -55,13 +60,16 @@ void StringContainer_Append(StringContainer* this, char* newString) {
 
   printf("Added %s name\n", newString);
   strcpy(this->end, newString);
-  SizeTContainer_Append(&this->offsets, StringContainer_Used(this));
-  this->end = this->begin + StringContainer_Used(this) + newStringLength + 1;
+  size_t used = StringContainer_Used(this);
+  DynamicArray_Push(this->offsets, used);
+  this->end = this->begin + used + newStringLength + 1;
 }
 
 void StringContainer_Print(const StringContainer* this) {
-  for (size_t i = 0; i < SizeTContainer_Used(&this->offsets); ++i) {
-    printf("%ld (%zu): %s\n", i, this->offsets.begin[i], StringContainer_At(this, i));
+  size_t* offsetsBegin = DynamicArray_Begin(size_t, this->offsets);
+  size_t arraySize = DynamicArray_End(size_t, this->offsets) - offsetsBegin;
+  for (size_t i = 0; i < arraySize; ++i) {
+    printf("%ld (%zu): %s\n", i, offsetsBegin[i], StringContainer_At(this, i));
   }
 }
 

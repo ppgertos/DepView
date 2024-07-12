@@ -1,3 +1,4 @@
+#include "Container.h"
 #define _XOPEN_SOURCE 500
 
 #include "LogBook.h"
@@ -13,9 +14,22 @@ static LogEntry LogBook_MakeEntryFromString(LogBook* this, char* line);
 static void LogBook_MakeDependencies(LogBook* this, LogEntry* le, char* fieldBegin, char* fieldEnd);
 static size_t LogBook_FindNodeNameOffset(LogBook* this, const char* name);
 
-LogBook LogBook_Make(const char* fileName) {
-  LogBook this;
-  this.entriesSize = 0;
+LogBook LogBook_Init(const char* fileName) {
+  LogBook this = (LogBook){
+      .entries = NULL,
+      .entriesSize = 0,
+      .nodeNames = StringContainer_Init(),
+  };
+  return this;
+}
+
+void LogBook_Load(LogBook* this, const char* fileName)
+{
+  if (!fileName) {
+    perror("filename is NULL");
+    exit(10);
+  }
+
   FILE* fptr = fopen(fileName, "r");
   if (fptr == NULL) {
     perror("Cannot read file: ");
@@ -25,7 +39,7 @@ LogBook LogBook_Make(const char* fileName) {
   char buffer[128];
   memset(buffer, '\0', 128);
   while (fgets(buffer, sizeof(buffer), fptr)) {
-    ++this.entriesSize;
+    ++this->entriesSize;
   }
   fclose(fptr);
 
@@ -36,21 +50,24 @@ LogBook LogBook_Make(const char* fileName) {
     exit(1);
   }
 
-  this.nodeNames = StringContainer_Make();
-  this.entries = calloc(sizeof(LogEntry), this.entriesSize);
-
-  if (this.entries == NULL) {
+  this->entries = calloc(sizeof(LogEntry), this->entriesSize);
+  if (this->entries == NULL) {
     perror("Cannot calloc memory for LogBook entries");
     exit(10);
   }
 
   int i = 0;
   while (fgets(buffer, sizeof(buffer), fptr)) {
-    this.entries[i++] = LogBook_MakeEntryFromString(&this, buffer);
+    this->entries[i++] = LogBook_MakeEntryFromString(this, buffer);
   }
-  StringContainer_Print(&this.nodeNames);
+  StringContainer_Print(&this->nodeNames);
   fclose(fptr);
-  return this;
+}
+
+void LogBook_Destroy(LogBook* this) {
+  StringContainer_Destroy(&this->nodeNames);
+  free(this->entries);
+  this->entriesSize = 0;
 }
 
 LogEntry LogBook_MakeEntryFromString(LogBook* this, char* buffer) {
@@ -165,7 +182,9 @@ char* LogBook_GetNodeName(const LogBook* this, const size_t offset) {
 }
 
 static size_t LogBook_FindNodeNameOffset(LogBook* this, const char* name) {
-  for (size_t i = 0; i < SizeTContainer_Used(&this->nodeNames.offsets); ++i) {
+  size_t array_size =
+      DynamicArray_End(size_t, this->nodeNames.offsets) - DynamicArray_Begin(size_t, this->nodeNames.offsets);
+  for (size_t i = 0; i < array_size; ++i) {
     const char* current = StringContainer_At(&this->nodeNames, i);
     if (0 == strcmp(current, name)) {
       return current - this->nodeNames.begin;

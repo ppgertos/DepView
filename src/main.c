@@ -48,7 +48,6 @@ typedef struct Gui {
 typedef struct AppContext {
   LogBook logBook;
   size_t currentLog;
-  size_t logsSize;
   Diagram currentDiagram;
   Diagram nextDiagram;
   Gui gui;
@@ -90,9 +89,9 @@ int main() {
 // Controls Functions Definitions (local)
 //------------------------------------------------------------------------------------
 static AppContext AppContext_Init() {
-  AppContext a = {.logsSize = 0,
+  AppContext a = {.logBook = LogBook_Init(NULL),
                   .currentLog = 0,
-                  .currentDiagram = Diagram_Make(NULL, 0),
+                  .currentDiagram = Diagram_Init(NULL, 0),
                   .gui = {.screenWidth = 800,
                           .screenHeight = 600,
                           .selectedTimestamp = "2024-06-17T21:41:35+0200",
@@ -119,9 +118,9 @@ static void AppContext_Loop(AppContext* app) {
 
   if (app->gui.diagramNeedsToChange) {
     printf("DIagram update!\n");
-    if (app->logsSize > app->currentLog) {
+    if (app->logBook.entriesSize > app->currentLog) {
       Diagram_Destroy(&app->currentDiagram);
-      app->currentDiagram = Diagram_Make(&app->logBook, app->currentLog);
+      app->currentDiagram = Diagram_Init(&app->logBook, app->currentLog);
       snprintf(app->gui.selectedTimestamp, 24, "%ld", app->logBook.entries[app->currentLog].timestamp);
     }
     app->gui.diagramNeedsToChange = false;
@@ -173,7 +172,7 @@ static void AppContext_Draw(AppContext* app) {
                    app->gui.scrollPanelView.width - app->gui.scrollPanelBoundsOffset.x,
                    app->gui.scrollPanelView.height - app->gui.scrollPanelBoundsOffset.y);
   {
-    if (app->logsSize > 0) {
+    if (app->logBook.entriesSize > 0) {
       Vector2 subviewOffset = {
           .x = app->gui.scrollPanelView.x + app->gui.scrollPanelScrollOffset.x,
           .y = app->gui.scrollPanelView.y + app->gui.scrollPanelScrollOffset.y,
@@ -192,14 +191,12 @@ static void AppContext_Draw(AppContext* app) {
 
 static void AppContext_Destroy(AppContext* this) {
   Diagram_Destroy(&this->currentDiagram);
-  this->logsSize = 0;
+  LogBook_Destroy(&this->logBook);
 }
 
-static void AppContext_LoadLog(AppContext* appContext, char* fileName) {
-  appContext->logsSize = 0;
-  appContext->logBook = LogBook_Make(fileName);
-  appContext->logsSize = appContext->logBook.entriesSize;
-  printf("Loaded %zu logs\n", appContext->logsSize);
+static void AppContext_LoadLog(AppContext* this, char* fileName) {
+  LogBook_Load(&this->logBook, fileName);
+  printf("Loaded %zu logs\n", this->logBook.entriesSize);
 }
 
 static void BuildLayout(Vector2* result, const Diagram* diagram) {

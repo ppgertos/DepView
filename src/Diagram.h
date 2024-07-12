@@ -25,4 +25,4 @@ typedef struct Diagram {
 } Diagram;
 
 void Diagram_Destroy(Diagram* this);
-Diagram Diagram_Make(const struct LogBook* logBook, size_t currentLogIndex);
+Diagram Diagram_Init(const struct LogBook* logBook, size_t currentLogIndex);
