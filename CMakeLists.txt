@@ -21,6 +21,7 @@ include(cmake/FetchRaygui.cmake)
 add_executable(${CMAKE_PROJECT_NAME}
   src/main.c
 
+  src/App.c
   src/Diagram.c
   src/DynamicArray.c
   src/LogBook.c
