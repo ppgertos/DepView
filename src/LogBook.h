@@ -31,5 +31,6 @@ typedef struct LogBook{
 LogBook LogBook_Init(const char *fileName);
 void LogBook_Destroy(LogBook* this);
 void LogBook_Load(LogBook* this, const char* fileName);
+void LogBook_Print(LogBook* this);
 char* LogBook_GetNodeName(const LogBook *this, const size_t offset);
 

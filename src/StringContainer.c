@@ -37,14 +37,8 @@ const char* StringContainer_At(const StringContainer* this, size_t index) {
   return &this->begin[DynamicArray_Begin(size_t, this->offsets)[index]];
 }
 
-void StringContainer_Append(StringContainer* this, char* newString) {
-  char* newStringEnd = strchr(newString, '\0');
-  if (!newStringEnd) {
-    perror("Cannot find NULL char in newString");
-    exit(10);
-  }
-
-  const size_t newStringLength = newStringEnd - newString;
+size_t StringContainer_Append(StringContainer* this, char* newString) {
+  const size_t newStringLength = strlen(newString) + 1;
   while (StringContainer_Available(this) < newStringLength) {
     const size_t allocatedDoubled = StringContainer_Allocated(this) * 2;
     const size_t used = StringContainer_Used(this);
@@ -57,12 +51,12 @@ void StringContainer_Append(StringContainer* this, char* newString) {
     this->end = this->begin + used;
     memset(this->end, '\0', StringContainer_Available(this));
   }
-
   printf("Added %s name\n", newString);
   strcpy(this->end, newString);
   size_t used = StringContainer_Used(this);
   DynamicArray_Push(this->offsets, used);
-  this->end = this->begin + used + newStringLength + 1;
+  this->end = this->begin + used + newStringLength;
+  return used;
 }
 
 void StringContainer_Print(const StringContainer* this) {

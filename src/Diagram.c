@@ -67,7 +67,7 @@ Diagram Diagram_Init(const struct LogBook* logBook, size_t currentLogIndex) {
         node->status = log->status;
 
         size_t i = 0;
-        while (log->dependencies[i] != (size_t)-1) {
+        while (log->dependencies[i] != 0) {
           node->dependencies[i] = Diagram_FindNode(&this, log->dependencies[i]) - this.nodes;
           ++i;
         }

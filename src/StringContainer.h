@@ -15,6 +15,6 @@ typedef struct StringContainer {
 StringContainer StringContainer_Init();
 void StringContainer_Destroy(StringContainer* this);
 const char* StringContainer_At(const StringContainer* this, size_t index);
-void StringContainer_Append(StringContainer* this, char* newString);
+size_t StringContainer_Append(StringContainer* this, char* newString);
 void StringContainer_Print(const StringContainer* this);
 size_t StringContainer_Used(StringContainer* this);

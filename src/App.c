@@ -107,12 +107,13 @@ static void App_Loop(App* app) {
     printf("Loading log from %s\n", app->gui.selectedFileName);
     LogBook_Load(&app->logBook, app->gui.selectedFileName);
     printf("Loaded %zu logs\n", app->logBook.entriesSize);
+	LogBook_Print(&app->logBook);
     app->gui.fileDialogState.SelectFilePressed = false;
     app->gui.diagramNeedsToChange = true;
   }
 
   if (app->gui.diagramNeedsToChange) {
-    printf("DIagram update!\n");
+    printf("Diagram update!\n");
     if (app->logBook.entriesSize > app->currentLog) {
       Diagram_Destroy(&app->currentDiagram);
       app->currentDiagram = Diagram_Init(&app->logBook, app->currentLog);
