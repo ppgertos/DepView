@@ -1,9 +1,10 @@
+#include "Diagram.h"
+#include "DynamicArray.h"
+#include "LogBook.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "Diagram.h"
-#include "LogBook.h"
 
 static Node* Diagram_FindNode(Diagram const* diagram, size_t nodeName);
 
@@ -15,45 +16,31 @@ void Diagram_Destroy(Diagram* this) {
 }
 
 Diagram Diagram_Init(const struct LogBook* logBook, size_t currentLogIndex) {
-  size_t nodesNumber = 0;
-  size_t maxNodesNumber = 0;
+  Diagram this = {
+      .nodes = NULL,
+      .nodesSize = 0,
+      .edges = NULL,
+      .edgesSize = 0,
+  };
 
-  Diagram this;
-  this.nodes = NULL;
-  this.nodesSize = 0;
-  this.edges = NULL;
-  this.edgesSize = 0;
   if (!logBook) {
     return this;
   }
+
   if (currentLogIndex >= logBook->entriesSize) {
     puts("Runtime error: currentLogIndex > logBook.entriesSize");
     exit(10);
   }
 
-  LogEntry* logBegin = logBook->entries;
-  LogEntry* logEnd = logBook->entries + currentLogIndex + 1;
-  for (LogEntry* log = logBegin; log < logEnd; ++log) {
-    switch (log->operation) {
-      case EOperation_Add:
-        nodesNumber++;
-        break;
-      case EOperation_Remove:
-        nodesNumber--;
-        break;
-      default:
-        break;
-    }
-    if (maxNodesNumber < nodesNumber) {
-      maxNodesNumber = nodesNumber;
-    }
-  }
+  const size_t maxNodesNumber = DynamicArray_Size(size_t, logBook->nodeNames.offsets);
   this.nodes = calloc(maxNodesNumber, sizeof(Node));
   this.edges = calloc(maxNodesNumber * (maxNodesNumber - 1), sizeof(Edge));
   printf("calloc(%ld, %ld) : %p \n", maxNodesNumber, sizeof(Node), (void*)this.nodes);
   size_t nextNode = 0;
   size_t nextEdge = 0;
 
+  LogEntry* logBegin = logBook->entries;
+  LogEntry* logEnd = logBook->entries + currentLogIndex + 1;
   for (LogEntry* log = logBegin; log < logEnd; ++log) {
     switch (log->operation) {
       case EOperation_Add: {

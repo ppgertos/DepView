@@ -1,8 +1,7 @@
-#include "Container.h"
 #define _XOPEN_SOURCE 500
 
 #include "LogBook.h"
-
+#include "Container.h"
 #include "StringContainer.h"
 
 #include <stdio.h>

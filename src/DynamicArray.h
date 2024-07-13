@@ -9,6 +9,9 @@ DynamicArray* DynamicArray_Make_(size_t item_size);
 
 void DynamicArray_Destroy(DynamicArray* this);
 
+size_t DynamicArray_Size_(DynamicArray* this, size_t elementSize);
+#define DynamicArray_Size(T, this) (DynamicArray_Size_(this, sizeof(T)));
+
 void* DynamicArray_Begin_(DynamicArray* this);
 #define DynamicArray_Begin(T, this) ((T*) DynamicArray_Begin_(this))
 

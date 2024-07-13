@@ -37,6 +37,11 @@ void* DynamicArray_End_(DynamicArray* this) {
   return ((char*)this->buffer) + this->size;
 }
 
+size_t DynamicArray_Size_(DynamicArray* this, size_t elementSize)
+{
+  return this->size / elementSize;
+}
+
 void DynamicArray_Push_(DynamicArray* this, const void* item, size_t item_size) {
   if (item_size != this->item_size) {
     perror("Incompatible item sizes!");
