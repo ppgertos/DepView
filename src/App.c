@@ -1,7 +1,8 @@
 #include "App.h"
-
+#include "DynamicArray.h"
 #include <Diagram.h>
 #include <LogBook.h>
+#include <stddef.h>
 
 #define RAYGUI_IMPLEMENTATION
 #include <raygui.h>
@@ -63,18 +64,18 @@ size_t App_SizeOf() {
 
 void App_Init(App* app) {
   *app = (App){.logBook = LogBook_Init(NULL),
-             .currentLog = 0,
-             .currentDiagram = Diagram_Init(NULL, 0),
-             .gui = {.screenWidth = 800,
-                     .screenHeight = 600,
-                     .selectedTimestamp = "2024-06-17T21:41:35+0200",
-                     .loadFileText = "LOAD FILE",
-                     .selectedFileName = "FilePath",
-                     .scrollPanelView = {.x = 0, .y = 0, .width = 0, .height = 0},
-                     .scrollPanelScrollOffset = {.x = 0, .y = 0},
-                     .scrollPanelBoundsOffset = {.x = 0, .y = 0},
-                     .fileDialogState = InitGuiWindowFileDialog(NULL),
-                     .diagramNeedsToChange = false}};
+               .currentLog = 0,
+               .currentDiagram = Diagram_Init(NULL, 0),
+               .gui = {.screenWidth = 800,
+                       .screenHeight = 600,
+                       .selectedTimestamp = "2024-06-17T21:41:35+0200",
+                       .loadFileText = "LOAD FILE",
+                       .selectedFileName = "FilePath",
+                       .scrollPanelView = {.x = 0, .y = 0, .width = 0, .height = 0},
+                       .scrollPanelScrollOffset = {.x = 0, .y = 0},
+                       .scrollPanelBoundsOffset = {.x = 0, .y = 0},
+                       .fileDialogState = InitGuiWindowFileDialog(NULL),
+                       .diagramNeedsToChange = false}};
 }
 
 void App_Destroy(App* this) {
@@ -82,16 +83,14 @@ void App_Destroy(App* this) {
   LogBook_Destroy(&this->logBook);
 }
 
-
 void App_Run(App* app) {
   SetConfigFlags(FLAG_WINDOW_RESIZABLE);
   InitWindow(app->gui.screenWidth, app->gui.screenHeight, "DepView");
   SetTargetFPS(60);
 
-  while (!WindowShouldClose())
-  {
-	App_Loop(app);
-	App_Draw(app);
+  while (!WindowShouldClose()) {
+    App_Loop(app);
+    App_Draw(app);
   }
 
   CloseWindow();
@@ -107,7 +106,7 @@ static void App_Loop(App* app) {
     printf("Loading log from %s\n", app->gui.selectedFileName);
     LogBook_Load(&app->logBook, app->gui.selectedFileName);
     printf("Loaded %zu logs\n", app->logBook.entriesSize);
-	LogBook_Print(&app->logBook);
+    LogBook_Print(&app->logBook);
     app->gui.fileDialogState.SelectFilePressed = false;
     app->gui.diagramNeedsToChange = true;
   }
@@ -189,26 +188,46 @@ static void BuildLayout(Vector2* result, const Diagram* diagram) {
   DiagramStyle ds = DiagramStyle_Default();
   int nodesInColumn[16];
   memset(&nodesInColumn, '\0', sizeof(nodesInColumn));
-  int nodeToColumn[diagram->nodesSize];
+  int levelsOfDependency[diagram->nodesSize];
+  memset(levelsOfDependency, -1, sizeof(levelsOfDependency));
+
+  DynamicArray* stack = DynamicArray_Make(size_t);
   for (size_t i = 0; i < diagram->nodesSize; ++i) {
-    if (diagram->nodes[i].dependencies[0] == (size_t)-1) {
-      nodeToColumn[i] = 0;
-    } else {
-      size_t j = 0;
-      size_t maxColumn = 0;
-      size_t sourceIndex = diagram->nodes[i].dependencies[j];
-      while (sourceIndex != (size_t)-1) {
-        if (maxColumn < nodeToColumn[sourceIndex]) {
-          maxColumn = nodeToColumn[sourceIndex];
+    if (levelsOfDependency[i] == -1) {
+      DynamicArray_Push(stack, i);
+      while (DynamicArray_Size(size_t, stack) != 0) {
+        size_t j = *(DynamicArray_End(size_t, stack) - 1);
+        size_t max = 0;
+        if (diagram->nodes[j].dependencies[0] == -1) {
+          levelsOfDependency[j] = 0;
+          DynamicArray_Pop(size_t, stack);
+        } else {
+          for (size_t k = 0; diagram->nodes[j].dependencies[k] != (size_t)-1; ++k) {
+            size_t dependency = diagram->nodes[j].dependencies[k];
+            if (levelsOfDependency[dependency] == -1) {
+              DynamicArray_Push(stack, dependency);
+              levelsOfDependency[dependency] = -2;
+              max = (size_t)-1;
+            } else if (levelsOfDependency[dependency] != -2) {
+              if (max != (size_t)-1 && max < levelsOfDependency[dependency]) {
+                max = levelsOfDependency[dependency];
+              }
+            }
+          }
+          if (max != (size_t)-1) {
+            levelsOfDependency[j] = max + 1;
+            DynamicArray_Pop(size_t, stack);
+          }
         }
-        sourceIndex = diagram->nodes[i].dependencies[++j];
       }
-      nodeToColumn[i] = maxColumn + 1;
     }
-    result[i].x = ds.MARGIN + nodeToColumn[i] * (ds.NODE_W + ds.HORI_PADDING);
-    result[i].y = ds.MARGIN + nodesInColumn[nodeToColumn[i]] * (ds.NODE_H + ds.VERT_PADDING);
-    ++nodesInColumn[nodeToColumn[i]];
+
+    result[i].x = ds.MARGIN + levelsOfDependency[i] * (ds.NODE_W + ds.HORI_PADDING);
+    result[i].y = ds.MARGIN + nodesInColumn[levelsOfDependency[i]] * (ds.NODE_H + ds.VERT_PADDING);
+    ++nodesInColumn[levelsOfDependency[i]];
   }
+  DynamicArray_Destroy(stack);
+  free(stack);
 }
 
 static void DrawEdge(const Vector2* nodesCoords, const Edge* edge, const Vector2* scrollOffset) {
@@ -223,11 +242,12 @@ static void DrawEdge(const Vector2* nodesCoords, const Edge* edge, const Vector2
   }
 
   strip[1].x = strip[0].x;
-  strip[1].y = strip[0].y + ds.VERT_PADDING / 2;
+  strip[1].y = strip[0].y + ds.VERT_PADDING / 5 + (edge->source % 9);  // here to add small jumps to distinguish lines
+
 
   // Line on "edge-bus"
   {
-    strip[2].x = strip[1].x + ds.NODE_W / 2 + ds.HORI_PADDING / 5 +
+    strip[2].x = scrollOffset->x + nodesCoords[edge->destination].x - ds.HORI_PADDING / 5 -
                  (edge->source % 9);  // here to add small jumps to distinguish lines
     strip[2].y = strip[1].y;
 

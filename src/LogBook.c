@@ -107,6 +107,11 @@ LogEntry LogBook_MakeEntryFromString(LogBook* this, const char* buffer, const si
   char operation[3];
   char nodeName[128];
   char operSpecific[512];
+
+  memset(nodeName, '\0', sizeof(nodeName));
+  memset(operation, '\0', sizeof(operation));
+  memset(timestamp, '\0', sizeof(timestamp));
+  memset(operSpecific, '\0', sizeof(operSpecific));
   sscanf(buffer, "%s %s %s%[][0-9a-zA-Z, \n]", timestamp, operation, nodeName, operSpecific);
   LogEntry le = {
       .operation = EOperation_None,
@@ -114,7 +119,6 @@ LogEntry LogBook_MakeEntryFromString(LogBook* this, const char* buffer, const si
       .timestamp = 0,
       .nodeName = 0,
   };
-  //le.dependencies[0] = (size_t) -1;
   memset(le.dependencies, '\0', sizeof(le.dependencies));
 
   struct tm tm;

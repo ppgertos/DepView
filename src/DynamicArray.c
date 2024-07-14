@@ -62,3 +62,8 @@ void DynamicArray_Push_(DynamicArray* this, const void* item, size_t item_size) 
   memcpy(((char*)this->buffer) + this->size, (char*)item, item_size);
   this->size += item_size;
 }
+
+void* DynamicArray_Pop_(DynamicArray* this, size_t item_size){
+  this->size -= item_size;
+  return (char*)this->buffer + this->size;
+}

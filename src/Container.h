@@ -18,3 +18,6 @@ void* DynamicArray_End_(DynamicArray* this);
 void DynamicArray_Push_(DynamicArray* this, const void* item, size_t item_size);
 #define DynamicArray_Push(this, item) (DynamicArray_Push_(this, &item, sizeof(item)))
 
+void* DynamicArray_Pop_(DynamicArray* this, size_t item_size);
+#define DynamicArray_Pop(T, this) ((T*) DynamicArray_Pop_(this, sizeof(T)))
+
