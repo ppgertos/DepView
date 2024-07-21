@@ -13,6 +13,7 @@ static Edge* Diagram_FindEdge(Diagram const* diagram, size_t source, size_t dest
 void Diagram_Destroy(Diagram* this) {
   free(this->edges);
   this->edgesSize = 0;
+  free(this->coordinates);
   free(this->nodes);
   this->nodesSize = 0;
 }
@@ -21,6 +22,7 @@ Diagram Diagram_Init(const struct LogBook* logBook, size_t currentLogIndex) {
   Diagram this = {
       .nodes = NULL,
       .nodesSize = 0,
+      .coordinates = NULL,
       .edges = NULL,
       .edgesSize = 0,
   };
@@ -36,6 +38,7 @@ Diagram Diagram_Init(const struct LogBook* logBook, size_t currentLogIndex) {
 
   const size_t maxNodesNumber = DynamicArray_Size(size_t, logBook->nodeNames.offsets);
   this.nodes = calloc(maxNodesNumber, sizeof(Node));
+  this.coordinates = calloc(maxNodesNumber, sizeof(Node));
   this.edges = calloc(maxNodesNumber * (maxNodesNumber - 1), sizeof(Edge));
   printf("calloc(%ld, %ld) : %p \n", maxNodesNumber, sizeof(Node), (void*)this.nodes);
 
@@ -159,6 +162,17 @@ Diagram Diagram_Init(const struct LogBook* logBook, size_t currentLogIndex) {
     }
   }
   return this;
+}
+
+void Diagram_Copy(Diagram* target, const Diagram* source)
+{
+  memcpy(target, source, sizeof(Diagram));
+  target->nodes = calloc(sizeof(Node), target->nodesSize);
+  memcpy(target->nodes, source->nodes, sizeof(Node)*target->nodesSize);
+  target->coordinates = calloc(sizeof(Vector2), target->nodesSize);
+  memcpy(target->coordinates, source->coordinates, sizeof(Vector2)*target->nodesSize);
+  target->edges = calloc(sizeof(Edge), target->edgesSize);
+  memcpy(target->edges, source->edges, sizeof(Edge)*target->edgesSize);
 }
 
 static Node* Diagram_FindNode(Diagram const* diagram, size_t nodeName) {

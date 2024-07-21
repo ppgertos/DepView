@@ -20,9 +20,11 @@ typedef struct Edge {
 typedef struct Diagram {
   Node* nodes;
   size_t nodesSize;
+  Vector2* coordinates;
   Edge* edges;
   size_t edgesSize;
 } Diagram;
 
 void Diagram_Destroy(Diagram* this);
 Diagram Diagram_Init(const struct LogBook* logBook, size_t currentLogIndex);
+void Diagram_Copy(Diagram* target, const Diagram* source);
