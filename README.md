@@ -23,7 +23,7 @@ $ git clone https://github.com/ppgertos/DepView
 $ cd DepView
 
 # Build app
-$ mkdir build && cmake -B build -S . && cmake --build build --target DepView
+$ mkdir build && cmake -B build -S . && cmake --build build
 
 # Run the app
 $ ./build/DepView
@@ -34,7 +34,6 @@ In opened window click "LOAD FILE" and choose file with logs for which you want 
 ## Further improvements
 
 * Replace text logs file with binary data;
-* Add animated change of diagram, when next / previous frame is selected;
 * Add raygui set of predefined styles for user to choose;
 * Add simple configuration file to keep recently choosen path, and gui theme;
 
@@ -48,6 +47,4 @@ This software uses the following open source packages:
 ## License
 
 MIT
-
----
 
