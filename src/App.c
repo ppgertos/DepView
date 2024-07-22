@@ -9,6 +9,19 @@
 #include <raygui.h>
 #undef RAYGUI_IMPLEMENTATION
 
+#define MAX_GUI_STYLES_AVAILABLE 12                 // NOTE: Included light style
+#include <raygui/styles/ashes/style_ashes.h>        // raygui style: ashes
+#include <raygui/styles/bluish/style_bluish.h>      // raygui style: bluish
+#include <raygui/styles/candy/style_candy.h>        // raygui style: candy
+#include <raygui/styles/cherry/style_cherry.h>      // raygui style: cherry
+#include <raygui/styles/cyber/style_cyber.h>        // raygui style: cyber
+#include <raygui/styles/dark/style_dark.h>          // raygui style: dark
+#include <raygui/styles/enefete/style_enefete.h>    // raygui style: enefete
+#include <raygui/styles/jungle/style_jungle.h>      // raygui style: jungle
+#include <raygui/styles/lavanda/style_lavanda.h>    // raygui style: lavanda
+#include <raygui/styles/sunny/style_sunny.h>        // raygui style: sunny
+#include <raygui/styles/terminal/style_terminal.h>  // raygui style: terminal
+
 #define GUI_WINDOW_FILE_DIALOG_IMPLEMENTATION
 #include <gui_window_file_dialog.h>
 #undef GUI_WINDOW_FILE_DIALOG_IMPLEMENTATION
@@ -20,6 +33,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+const char *const GUI_STYLES_COMBOLIST = "default;Jungle;Candy;Lavanda;Cyber;Terminal;Ashes;Bluish;Dark;Cherry;Sunny;Enefete";
+
 typedef struct Core {
   LogBook logBook;
   size_t currentLog;
@@ -29,6 +44,8 @@ typedef struct Core {
 
 typedef struct Gui {
   const char* loadFileText;
+  int activeStyle;
+  int prevStyle;
   float toolbarHeight;
   Vector2 windowMargins;
   Vector2 windowPaddings;
@@ -52,6 +69,7 @@ typedef struct App {
 
 static void App_Loop(App* app);
 static void App_Draw(App* app);
+static void Gui_ChangeStyle(Gui* gui);
 
 size_t App_SizeOf() {
   return sizeof(App);
@@ -71,9 +89,11 @@ void App_Init(App* app) {
       .gui =
           {
               .loadFileText = "LOAD FILE",
+              .activeStyle = 4,
+              .prevStyle = 0,
               .toolbarHeight = 24,
               .windowMargins = {.x = 10, .y = 10},
-              .windowPaddings = {.x = 10, .y = 10},
+              .windowPaddings = {.x = 7, .y = 7},
               .screenWidth = 800,
               .screenHeight = 600,
               .selectedTimestamp = "2024-06-17T21:41:35+0200",
@@ -97,10 +117,12 @@ void App_Destroy(App* this) {
   Core_Destroy(&this->core);
 }
 
+
 void App_Run(App* app) {
   SetConfigFlags(FLAG_WINDOW_RESIZABLE);
   InitWindow(app->gui.screenWidth, app->gui.screenHeight, "DepView");
   SetTargetFPS(60);
+
 
   while (app->running) {
     App_Loop(app);
@@ -135,6 +157,31 @@ static void App_Loop(App* app) {
   }
 }
 
+static void Gui_ChangeStyle(Gui* gui) {
+  // Reset to default internal style
+  // NOTE: Required to unload any previously loaded font texture
+  GuiLoadStyleDefault();
+
+  switch (gui->activeStyle) {
+    // clang-format off
+    case 1: GuiLoadStyleJungle(); break;
+    case 2: GuiLoadStyleCandy(); break;
+    case 3: GuiLoadStyleLavanda(); break;
+    case 4: GuiLoadStyleCyber(); break;
+    case 5: GuiLoadStyleTerminal(); break;
+    case 6: GuiLoadStyleAshes(); break;
+    case 7: GuiLoadStyleBluish(); break;
+    case 8: GuiLoadStyleDark(); break;
+    case 9: GuiLoadStyleCherry(); break;
+    case 10: GuiLoadStyleSunny(); break;
+    case 11: GuiLoadStyleEnefete(); break;
+    default: break;
+    // clang-format on
+  }
+
+  gui->prevStyle = gui->activeStyle;
+}
+
 static void DrawToolbar(App* app);
 static void DrawPanel(App* app);
 
@@ -143,6 +190,11 @@ static void App_Draw(App* app) {
     app->gui.screenWidth = GetScreenWidth();
     app->gui.screenHeight = GetScreenHeight();
   }
+
+  if (app->gui.activeStyle != app->gui.prevStyle) {
+    Gui_ChangeStyle(&app->gui);
+  }
+
   BeginDrawing();
   ClearBackground(GetColor(GuiGetStyle(DEFAULT, BACKGROUND_COLOR)));
 
@@ -164,7 +216,7 @@ static void DrawToolbar(App* app) {
     app->gui.fileDialogState = InitGuiWindowFileDialog(app->gui.selectedFileName);
     app->gui.fileDialogState.windowActive = true;
   }
-  GuiLabel(FlowLayout_Add(&toolbarLayout, 304, TOOLBAR_H), app->gui.selectedFileName);
+  GuiLabel(FlowLayout_Add(&toolbarLayout, 298, TOOLBAR_H), app->gui.selectedFileName);
 
   if (GuiButton(FlowLayout_Add(&toolbarLayout, TOOLBAR_H, TOOLBAR_H), "<")) {
     app->core.currentLog = 0 == app->core.currentLog ? app->core.currentLog : app->core.currentLog - 1;
@@ -183,6 +235,9 @@ static void DrawToolbar(App* app) {
     app->changeProcent = 0.0;
   }
 
+  GuiLabel(FlowLayout_Add(&toolbarLayout, 40, TOOLBAR_H ), "Style:");
+  GuiComboBox(FlowLayout_Add(&toolbarLayout, 120, TOOLBAR_H ), GUI_STYLES_COMBOLIST, &app->gui.activeStyle);
+
   FlowLayout_Destroy(&toolbarLayout);
 }
 
@@ -193,7 +248,7 @@ static void DrawPanel(App* app) {
   const float PANEL_X = app->gui.windowMargins.x;
   const float PANEL_Y = app->gui.windowMargins.y + app->gui.toolbarHeight + app->gui.windowPaddings.y;
   const float PANEL_W = app->gui.screenWidth - PANEL_X - app->gui.windowMargins.x - app->gui.scrollPanelBoundsOffset.x;
-  const float PANEL_H = app->gui.screenWidth - PANEL_Y - app->gui.windowMargins.y - app->gui.scrollPanelBoundsOffset.y;
+  const float PANEL_H = app->gui.screenHeight - PANEL_Y - app->gui.windowMargins.y - app->gui.scrollPanelBoundsOffset.y;
   GuiScrollPanel((Rectangle){PANEL_X, PANEL_Y, PANEL_W, PANEL_H}, NULL,
                  (Rectangle){.x = 0, .y = 0, .width = 800, .height = 600}, &app->gui.scrollPanelScrollOffset,
                  &app->gui.scrollPanelView);
