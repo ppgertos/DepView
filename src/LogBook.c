@@ -1,7 +1,7 @@
 #define _XOPEN_SOURCE 500
 
 #include "LogBook.h"
-#include "Container.h"
+#include "DynamicArray.h"
 #include "StringContainer.h"
 
 #include <stdio.h>
@@ -154,6 +154,7 @@ LogEntry LogBook_MakeEntryFromString(LogBook* this, const char* buffer, const si
       switch (status[0]) {  // clang-format off
         case 'o': le.status = EStatus_Ongoing; break;
         case 'w': le.status = EStatus_Waiting; break;
+        case 'f': le.status = EStatus_Finished; break;
         default: return LogBook_SyntaxWrongStatus(&le, status, lineNumber);
       }  // clang-format on
 

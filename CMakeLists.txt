@@ -26,6 +26,7 @@ add_executable(${CMAKE_PROJECT_NAME}
   src/DynamicArray.c
   src/LogBook.c
   src/StringContainer.c
+  src/Workspace.c
  )
 
 target_link_libraries(${CMAKE_PROJECT_NAME} raylib raygui m)

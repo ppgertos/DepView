@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "Container.h"
+#include "DynamicArray.h"
 #include "StringContainer.h"
 
 static size_t StringContainer_Allocated(StringContainer* this);

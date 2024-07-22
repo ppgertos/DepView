@@ -91,7 +91,7 @@ Diagram Diagram_Init(const struct LogBook* logBook, size_t currentLogIndex) {
                   log->timestamp);
           exit(10);
         }
-        node->status = EStatus_Ongoing;
+        node->status = log->status;
         break;
       }
 
@@ -164,15 +164,14 @@ Diagram Diagram_Init(const struct LogBook* logBook, size_t currentLogIndex) {
   return this;
 }
 
-void Diagram_Copy(Diagram* target, const Diagram* source)
-{
+void Diagram_Copy(Diagram* target, const Diagram* source) {
   memcpy(target, source, sizeof(Diagram));
   target->nodes = calloc(sizeof(Node), target->nodesSize);
-  memcpy(target->nodes, source->nodes, sizeof(Node)*target->nodesSize);
+  memcpy(target->nodes, source->nodes, sizeof(Node) * target->nodesSize);
   target->coordinates = calloc(sizeof(Vector2), target->nodesSize);
-  memcpy(target->coordinates, source->coordinates, sizeof(Vector2)*target->nodesSize);
+  memcpy(target->coordinates, source->coordinates, sizeof(Vector2) * target->nodesSize);
   target->edges = calloc(sizeof(Edge), target->edgesSize);
-  memcpy(target->edges, source->edges, sizeof(Edge)*target->edgesSize);
+  memcpy(target->edges, source->edges, sizeof(Edge) * target->edgesSize);
 }
 
 static Node* Diagram_FindNode(Diagram const* diagram, size_t nodeName) {

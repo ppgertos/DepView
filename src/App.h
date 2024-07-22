@@ -4,6 +4,8 @@
 
 typedef struct App App;
 
+typedef struct Core Core;
+
 size_t App_SizeOf();
 void App_Init(App* app);
 void App_Destroy(App* this);
