@@ -28,9 +28,10 @@ typedef struct LogBook{
 	StringContainer nodeNames;
 } LogBook;
 
-LogBook LogBook_Init(const char *fileName);
+LogBook LogBook_Init();
 void LogBook_Destroy(LogBook* this);
 void LogBook_Load(LogBook* this, const char* fileName);
+unsigned int LogBook_IsLoaded(LogBook* this);
 void LogBook_Print(LogBook* this);
 char* LogBook_GetNodeName(const LogBook *this, const size_t offset);
 

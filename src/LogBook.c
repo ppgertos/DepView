@@ -13,7 +13,7 @@ static LogEntry LogBook_MakeEntryFromString(LogBook* this, const char* line, con
 static void LogBook_MakeDependencies(LogBook* this, LogEntry* le, char* fieldBegin, char* fieldEnd);
 static size_t LogBook_FindNodeNameOffset(LogBook* this, const char* name);
 
-LogBook LogBook_Init(const char* fileName) {
+LogBook LogBook_Init() {
   LogBook this = (LogBook){
       .entries = NULL,
       .entriesSize = 0,
@@ -66,8 +66,14 @@ void LogBook_Load(LogBook* this, const char* fileName) {
 
 void LogBook_Destroy(LogBook* this) {
   StringContainer_Destroy(&this->nodeNames);
-  free(this->entries);
+  if (this->entries) {
+    free(this->entries);
+  }
   this->entriesSize = 0;
+}
+
+unsigned int LogBook_IsLoaded(LogBook* this) {
+    return this->entries != NULL;
 }
 
 LogEntry LogBook_SyntaxWrongTimestamp(LogEntry* le, const char* timestamp, const size_t lineNumber) {

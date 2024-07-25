@@ -9,7 +9,7 @@ typedef struct Node {
   time_t timestamp;
   EStatus status;
   size_t nodeName;
-  size_t dependencies[128];
+  size_t dependencies[128]; //indexes of nodes in Diagram.nodes
 } Node;
 
 typedef struct Edge {

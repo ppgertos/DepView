@@ -1,12 +1,14 @@
 
+#include "App.h"
 #include "Diagram.h"
 #include "LogBook.h"
-#include "App.h"
 
 #include <gui_window_file_dialog.h>
 #include <raygui.h>
 
 #include <math.h>
+#include <raylib.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -17,10 +19,9 @@ typedef struct Core {
   Diagram currentDiagram;
 } Core;
 
-static void DrawGraph(const Core* core,
-                      float procent,
-                      const Vector2* scrollOffset);
-static void BuildLayout(Vector2* result, const Diagram* diagram);
+static void DrawGraph(const Core* core, float procent, const Vector2* scrollOffset);
+// static void BuildAbsoluteLayout(Vector2* result, const Diagram* diagram);
+static void BuildRelativeLayout(Vector2* result, const Diagram* diagram, const size_t selectedNode);
 static void DrawEdge(const Vector2* coordinates, const Edge* edge, const Vector2* scrollOffset);
 
 typedef struct DiagramStyle {
@@ -34,16 +35,14 @@ typedef struct DiagramStyle {
 struct DiagramStyle DiagramStyle_Default() {
   return (DiagramStyle){
       .VERT_PADDING = 10,
-      .HORI_PADDING = 20,
-      .NODE_H = 40,
-      .NODE_W = 120,
-      .MARGIN = 20,
+      .HORI_PADDING = 15,
+      .NODE_W = 140,
+      .NODE_H = 30,
+      .MARGIN = 10,
   };
 }
 
-void Workspace_Draw(const Core* core,
-                    float animationProgress,
-                    const Vector2* scrollOffset) {
+void Workspace_Draw(const Core* core, float animationProgress, const Vector2* scrollOffset) {
   float deltaPosition = 1.0;
   if (animationProgress < 1.0) {
     deltaPosition = 0.5 + 0.5 * sinf(animationProgress * 3.14 - 1.57);
@@ -51,12 +50,16 @@ void Workspace_Draw(const Core* core,
   DrawGraph(core, deltaPosition, scrollOffset);
 }
 
-static void DrawGraph(const Core* core,
-                      float procent,
-                      const Vector2* scrollOffset) {
+static void DrawGraph(const Core* core, float procent, const Vector2* scrollOffset) {
+  DiagramStyle ds = DiagramStyle_Default();
+  static size_t selectedNode = 0;
   const Diagram* diagram = &core->currentDiagram;
   const Diagram* oldDiagram = &core->oldDiagram;
-  BuildLayout(diagram->coordinates, diagram);
+  //  BuildAbsoluteLayout(diagram->coordinates, diagram);
+  if (selectedNode >= diagram->nodesSize) {
+    selectedNode = 0;
+  }
+  BuildRelativeLayout(diagram->coordinates, diagram, selectedNode);
 
   size_t nodesSize = diagram->nodesSize < oldDiagram->nodesSize ? oldDiagram->nodesSize : diagram->nodesSize;
   Vector2 coords[nodesSize];
@@ -73,19 +76,25 @@ static void DrawGraph(const Core* core,
 
   for (size_t i = 0; i < diagram->nodesSize; ++i) {
     Node* node = &diagram->nodes[i];
-    switch (node->status) {
-      case EStatus_Finished:
-        GuiSetState(STATE_DISABLED);
-        break;
-      case EStatus_Ongoing:
-        GuiSetState(STATE_FOCUSED);
-        break;
-      default:
-        GuiSetState(STATE_NORMAL);
-        break;
+    if (i == selectedNode) {
+      GuiSetState(STATE_PRESSED);
+    } else {
+      switch (node->status) {
+        case EStatus_Finished:
+          GuiSetState(STATE_DISABLED);
+          break;
+        case EStatus_Ongoing:
+          GuiSetState(STATE_FOCUSED);
+          break;
+        default:
+          GuiSetState(STATE_NORMAL);
+          break;
+      }
     }
-    GuiButton((Rectangle){coords[i].x + scrollOffset->x, coords[i].y + scrollOffset->y, 120, 40},
-              LogBook_GetNodeName(&core->logBook, node->nodeName));
+    if (GuiButton((Rectangle){coords[i].x + scrollOffset->x, coords[i].y + scrollOffset->y, ds.NODE_W, ds.NODE_H},
+                  LogBook_GetNodeName(&core->logBook, node->nodeName))) {
+      selectedNode = i;
+    };
   }
 
   for (size_t i = 0; i < diagram->edgesSize; ++i) {
@@ -94,8 +103,8 @@ static void DrawGraph(const Core* core,
 
   GuiSetState(STATE_NORMAL);
 }
-
-static void BuildLayout(Vector2* result, const Diagram* diagram) {
+/*
+static void BuildAbsoluteLayout(Vector2* result, const Diagram* diagram) {
   DiagramStyle ds = DiagramStyle_Default();
   int nodesInColumn[16];
   memset(&nodesInColumn, '\0', sizeof(nodesInColumn));
@@ -108,11 +117,11 @@ static void BuildLayout(Vector2* result, const Diagram* diagram) {
       DynamicArray_Push(stack, i);
       while (DynamicArray_Size(size_t, stack) != 0) {
         size_t j = *(DynamicArray_End(size_t, stack) - 1);
-        size_t max = 0;
-        if (diagram->nodes[j].dependencies[0] == -1) {
+        if (diagram->nodes[j].dependencies[0] == (size_t)-1) {
           levelsOfDependency[j] = 0;
           DynamicArray_Pop(size_t, stack);
         } else {
+          size_t max = 0;
           for (size_t k = 0; diagram->nodes[j].dependencies[k] != (size_t)-1; ++k) {
             size_t dependency = diagram->nodes[j].dependencies[k];
             if (levelsOfDependency[dependency] == -1) {
@@ -136,6 +145,73 @@ static void BuildLayout(Vector2* result, const Diagram* diagram) {
     result[i].x = ds.MARGIN + levelsOfDependency[i] * (ds.NODE_W + ds.HORI_PADDING);
     result[i].y = ds.MARGIN + nodesInColumn[levelsOfDependency[i]] * (ds.NODE_H + ds.VERT_PADDING);
     ++nodesInColumn[levelsOfDependency[i]];
+  }
+  DynamicArray_Destroy(stack);
+  free(stack);
+}
+*/
+static void BuildRelativeLayout(Vector2* result, const Diagram* diagram, const size_t selectedNode) {
+  DiagramStyle ds = DiagramStyle_Default();
+  int minLevel = 0;
+  int levelsOfDependency[diagram->nodesSize];
+
+  const int UNKNOWN = 1024 * 64 - 1;
+  const int DURING_CALCULATION = UNKNOWN - 1;
+  for (size_t i = 0; i < diagram->nodesSize; ++i) {
+    levelsOfDependency[i] = UNKNOWN;
+  }
+
+  DynamicArray* stack = DynamicArray_Make(size_t);
+  levelsOfDependency[selectedNode] = 0;
+  DynamicArray_Push(stack, selectedNode);
+  while (DynamicArray_Size(size_t, stack) != 0) {
+    size_t current = *(DynamicArray_Pop(size_t, stack));
+    for (size_t k = 0; diagram->nodes[current].dependencies[k] != (size_t)-1; ++k) {
+      size_t dependency = diagram->nodes[current].dependencies[k];
+      if (levelsOfDependency[dependency] == UNKNOWN) {
+        DynamicArray_Push(stack, dependency);
+        levelsOfDependency[dependency] = levelsOfDependency[current] - 1;
+        if (minLevel > levelsOfDependency[dependency]) {
+          minLevel = levelsOfDependency[dependency];
+        }
+      }
+    }
+  }
+
+  int nodesInColumn[16];
+  memset(&nodesInColumn, '\0', sizeof(nodesInColumn));
+  for (size_t i = 0; i < diagram->nodesSize; ++i) {
+    if (levelsOfDependency[i] == UNKNOWN) {
+      DynamicArray_Push(stack, i);
+      while (DynamicArray_Size(size_t, stack) != 0) {
+        size_t j = *(DynamicArray_End(size_t, stack) - 1);
+        if (diagram->nodes[j].dependencies[0] == (size_t)-1) {
+          levelsOfDependency[j] = 0;
+          DynamicArray_Pop(size_t, stack);
+        } else {
+          size_t max = 0;
+          for (size_t k = 0; diagram->nodes[j].dependencies[k] != (size_t)-1; ++k) {
+            size_t dependency = diagram->nodes[j].dependencies[k];
+            if (levelsOfDependency[dependency] == UNKNOWN) {
+              DynamicArray_Push(stack, dependency);
+              levelsOfDependency[dependency] = DURING_CALCULATION;
+              max = (size_t)-1;
+            } else if (levelsOfDependency[dependency] != DURING_CALCULATION) {
+              if (max != (size_t)-1 && max < levelsOfDependency[dependency]) {
+                max = levelsOfDependency[dependency];
+              }
+            }
+          }
+          if (max != (size_t)-1) {
+            levelsOfDependency[j] = max + 1;
+            DynamicArray_Pop(size_t, stack);
+          }
+        }
+      }
+    }
+    result[i].x = ds.MARGIN + (levelsOfDependency[i] - minLevel) * (ds.NODE_W + ds.HORI_PADDING);
+    result[i].y = ds.MARGIN + nodesInColumn[levelsOfDependency[i] - minLevel] * (ds.NODE_H + ds.VERT_PADDING);
+    ++nodesInColumn[levelsOfDependency[i] - minLevel];
   }
   DynamicArray_Destroy(stack);
   free(stack);

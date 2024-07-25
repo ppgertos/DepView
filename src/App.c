@@ -33,7 +33,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-const char *const GUI_STYLES_COMBOLIST = "default;Jungle;Candy;Lavanda;Cyber;Terminal;Ashes;Bluish;Dark;Cherry;Sunny;Enefete";
+const char* const GUI_STYLES_COMBOLIST =
+    "default;Jungle;Candy;Lavanda;Cyber;Terminal;Ashes;Bluish;Dark;Cherry;Sunny;Enefete";
 
 typedef struct Core {
   LogBook logBook;
@@ -53,6 +54,7 @@ typedef struct Gui {
   int screenHeight;
   char selectedTimestamp[25];
   char selectedFileName[2048];
+  char displayedFileName[128];
   Rectangle scrollPanelView;
   Vector2 scrollPanelScrollOffset;
   Vector2 scrollPanelBoundsOffset;
@@ -80,7 +82,7 @@ void App_Init(App* app) {
       .running = true,
       .core =
           {
-              .logBook = LogBook_Init(NULL),
+              .logBook = LogBook_Init(),
               .currentLog = 0,
               .oldDiagram = Diagram_Init(NULL, 0),
               .currentDiagram = Diagram_Init(NULL, 0),
@@ -93,11 +95,12 @@ void App_Init(App* app) {
               .prevStyle = 0,
               .toolbarHeight = 24,
               .windowMargins = {.x = 10, .y = 10},
-              .windowPaddings = {.x = 7, .y = 7},
+              .windowPaddings = {.x = 8, .y = 10},
               .screenWidth = 800,
               .screenHeight = 600,
               .selectedTimestamp = "2024-06-17T21:41:35+0200",
-              .selectedFileName = "FilePath",
+              .selectedFileName = "",
+              .displayedFileName = "FilePath",
               .scrollPanelView = {.x = 0, .y = 0, .width = 0, .height = 0},
               .scrollPanelScrollOffset = {.x = 0, .y = 0},
               .scrollPanelBoundsOffset = {.x = 0, .y = 0},
@@ -117,12 +120,10 @@ void App_Destroy(App* this) {
   Core_Destroy(&this->core);
 }
 
-
 void App_Run(App* app) {
   SetConfigFlags(FLAG_WINDOW_RESIZABLE);
   InitWindow(app->gui.screenWidth, app->gui.screenHeight, "DepView");
   SetTargetFPS(60);
-
 
   while (app->running) {
     App_Loop(app);
@@ -139,8 +140,14 @@ static void App_Loop(App* app) {
     snprintf(app->gui.selectedFileName, 2048, "%s/%s", app->gui.fileDialogState.dirPathText,
              app->gui.fileDialogState.fileNameText);
     printf("Loading log from %s\n", app->gui.selectedFileName);
+    if (LogBook_IsLoaded(&app->core.logBook))
+    {
+        LogBook_Destroy(&app->core.logBook);
+        app->core.logBook = LogBook_Init();
+    }
     LogBook_Load(&app->core.logBook, app->gui.selectedFileName);
     printf("Loaded %zu logs\n", app->core.logBook.entriesSize);
+    app->core.currentLog = 0;
     LogBook_Print(&app->core.logBook);
     app->gui.fileDialogState.SelectFilePressed = false;
     app->gui.diagramNeedsToChange = true;
@@ -176,7 +183,7 @@ static void Gui_ChangeStyle(Gui* gui) {
     case 10: GuiLoadStyleSunny(); break;
     case 11: GuiLoadStyleEnefete(); break;
     default: break;
-    // clang-format on
+      // clang-format on
   }
 
   gui->prevStyle = gui->activeStyle;
@@ -207,16 +214,32 @@ static void App_Draw(App* app) {
 
 static void DrawToolbar(App* app) {
   const Vector2 TOOLBAR_POSITION = {.x = app->gui.windowMargins.x, .y = app->gui.windowMargins.y};
-  const float TOOLBAR_H = app->gui.toolbarHeight;
   const Vector2 TOOLBAR_PADDINGS = {.x = app->gui.windowPaddings.x, .y = 0};
-
   FlowLayout toolbarLayout = FlowLayout_Init(TOOLBAR_POSITION, TOOLBAR_PADDINGS);
 
+  const float TOOLBAR_H = app->gui.toolbarHeight;
   if (GuiButton(FlowLayout_Add(&toolbarLayout, 72, TOOLBAR_H), app->gui.loadFileText)) {
     app->gui.fileDialogState = InitGuiWindowFileDialog(app->gui.selectedFileName);
     app->gui.fileDialogState.windowActive = true;
   }
-  GuiLabel(FlowLayout_Add(&toolbarLayout, 298, TOOLBAR_H), app->gui.selectedFileName);
+
+  const float SELECTED_FILE_LABEL_W = 289;
+  if (strstr(app->gui.selectedFileName, app->gui.displayedFileName + 3) == NULL) {
+    float textWidth = MeasureText(app->gui.selectedFileName, GuiGetFont().baseSize);
+    if (textWidth > SELECTED_FILE_LABEL_W) {
+      size_t textStartOffset = 3;
+      while (textWidth > SELECTED_FILE_LABEL_W) {
+        textWidth = MeasureText(app->gui.selectedFileName + textStartOffset++, GuiGetFont().baseSize);
+      }
+      // app->gui.displayedFileName = realloc(app->gui.displayedFileName, strlen(app->gui.selectedFileName)+1 -
+      // textStartOffset + 3);
+      snprintf(app->gui.displayedFileName, 128, "...%s", app->gui.selectedFileName + textStartOffset);
+    }
+    else {
+      snprintf(app->gui.displayedFileName, 128, "%.127s", app->gui.selectedFileName);
+    }
+  }
+  GuiLabel(FlowLayout_Add(&toolbarLayout, SELECTED_FILE_LABEL_W, TOOLBAR_H), app->gui.displayedFileName);
 
   if (GuiButton(FlowLayout_Add(&toolbarLayout, TOOLBAR_H, TOOLBAR_H), "<")) {
     app->core.currentLog = 0 == app->core.currentLog ? app->core.currentLog : app->core.currentLog - 1;
@@ -235,8 +258,8 @@ static void DrawToolbar(App* app) {
     app->changeProcent = 0.0;
   }
 
-  GuiLabel(FlowLayout_Add(&toolbarLayout, 40, TOOLBAR_H ), "Style:");
-  GuiComboBox(FlowLayout_Add(&toolbarLayout, 120, TOOLBAR_H ), GUI_STYLES_COMBOLIST, &app->gui.activeStyle);
+  GuiLabel(FlowLayout_Add(&toolbarLayout, 40, TOOLBAR_H), "Style:");
+  GuiComboBox(FlowLayout_Add(&toolbarLayout, 120, TOOLBAR_H), GUI_STYLES_COMBOLIST, &app->gui.activeStyle);
 
   FlowLayout_Destroy(&toolbarLayout);
 }
