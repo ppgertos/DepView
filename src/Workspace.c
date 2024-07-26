@@ -15,12 +15,13 @@
 typedef struct Core {
   LogBook logBook;
   size_t currentLog;
+  int activeDiagramLayout;
   Diagram oldDiagram;
   Diagram currentDiagram;
 } Core;
 
 static void DrawGraph(const Core* core, float procent, const Vector2* scrollOffset);
-// static void BuildAbsoluteLayout(Vector2* result, const Diagram* diagram);
+static void BuildAbsoluteLayout(Vector2* result, const Diagram* diagram);
 static void BuildRelativeLayout(Vector2* result, const Diagram* diagram, const size_t selectedNode);
 static void DrawEdge(const Vector2* coordinates, const Edge* edge, const Vector2* scrollOffset);
 
@@ -55,11 +56,14 @@ static void DrawGraph(const Core* core, float procent, const Vector2* scrollOffs
   static size_t selectedNode = 0;
   const Diagram* diagram = &core->currentDiagram;
   const Diagram* oldDiagram = &core->oldDiagram;
-  //  BuildAbsoluteLayout(diagram->coordinates, diagram);
-  if (selectedNode >= diagram->nodesSize) {
-    selectedNode = 0;
+  if (core->activeDiagramLayout == 0) {
+    BuildAbsoluteLayout(diagram->coordinates, diagram);
+  } else {
+    if (selectedNode >= diagram->nodesSize) {
+      selectedNode = 0;
+    }
+    BuildRelativeLayout(diagram->coordinates, diagram, selectedNode);
   }
-  BuildRelativeLayout(diagram->coordinates, diagram, selectedNode);
 
   size_t nodesSize = diagram->nodesSize < oldDiagram->nodesSize ? oldDiagram->nodesSize : diagram->nodesSize;
   Vector2 coords[nodesSize];
@@ -103,7 +107,7 @@ static void DrawGraph(const Core* core, float procent, const Vector2* scrollOffs
 
   GuiSetState(STATE_NORMAL);
 }
-/*
+
 static void BuildAbsoluteLayout(Vector2* result, const Diagram* diagram) {
   DiagramStyle ds = DiagramStyle_Default();
   int nodesInColumn[16];
@@ -149,7 +153,7 @@ static void BuildAbsoluteLayout(Vector2* result, const Diagram* diagram) {
   DynamicArray_Destroy(stack);
   free(stack);
 }
-*/
+
 static void BuildRelativeLayout(Vector2* result, const Diagram* diagram, const size_t selectedNode) {
   DiagramStyle ds = DiagramStyle_Default();
   int minLevel = 0;

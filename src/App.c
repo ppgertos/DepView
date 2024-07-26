@@ -39,6 +39,7 @@ const char* const GUI_STYLES_COMBOLIST =
 typedef struct Core {
   LogBook logBook;
   size_t currentLog;
+  int activeDiagramLayout;
   Diagram oldDiagram;
   Diagram currentDiagram;
 } Core;
@@ -86,6 +87,7 @@ void App_Init(App* app) {
               .currentLog = 0,
               .oldDiagram = Diagram_Init(NULL, 0),
               .currentDiagram = Diagram_Init(NULL, 0),
+              .activeDiagramLayout = 0,
           },
       .changeProcent = 1.0,
       .gui =
@@ -262,6 +264,11 @@ static void DrawToolbar(App* app) {
   GuiComboBox(FlowLayout_Add(&toolbarLayout, 120, TOOLBAR_H), GUI_STYLES_COMBOLIST, &app->gui.activeStyle);
 
   FlowLayout_Destroy(&toolbarLayout);
+
+  const Vector2 TOOLBAR2_POSITION = {.x = app->gui.windowMargins.x, .y = app->gui.windowMargins.y + TOOLBAR_H + app->gui.windowPaddings.y};
+  FlowLayout toolbar2Layout = FlowLayout_Init(TOOLBAR2_POSITION, TOOLBAR_PADDINGS);
+  GuiLabel(FlowLayout_Add(&toolbar2Layout, 40, TOOLBAR_H), "Layout:");
+  GuiComboBox(FlowLayout_Add(&toolbar2Layout, 120, TOOLBAR_H), "Absolute;Relative", &app->core.activeDiagramLayout);
 }
 
 static void DrawPanel(App* app) {
@@ -269,7 +276,7 @@ static void DrawPanel(App* app) {
     GuiSetState(STATE_DISABLED);
   }
   const float PANEL_X = app->gui.windowMargins.x;
-  const float PANEL_Y = app->gui.windowMargins.y + app->gui.toolbarHeight + app->gui.windowPaddings.y;
+  const float PANEL_Y = app->gui.windowMargins.y + (app->gui.toolbarHeight + app->gui.windowPaddings.y)*2;
   const float PANEL_W = app->gui.screenWidth - PANEL_X - app->gui.windowMargins.x - app->gui.scrollPanelBoundsOffset.x;
   const float PANEL_H = app->gui.screenHeight - PANEL_Y - app->gui.windowMargins.y - app->gui.scrollPanelBoundsOffset.y;
   GuiScrollPanel((Rectangle){PANEL_X, PANEL_Y, PANEL_W, PANEL_H}, NULL,
