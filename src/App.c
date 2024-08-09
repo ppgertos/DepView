@@ -72,13 +72,14 @@ typedef struct App {
 
 static void App_Loop(App* app);
 static void App_Draw(App* app);
+static void App_LoadSelectedLogBook(App* app);
 static void Gui_ChangeStyle(Gui* gui);
 
 size_t App_SizeOf() {
   return sizeof(App);
 }
 
-void App_Init(App* app) {
+void App_Init(App* app, const Config config) {
   *app = (App){
       .running = true,
       .core =
@@ -110,6 +111,12 @@ void App_Init(App* app) {
               .diagramNeedsToChange = false,
           },
   };
+  if (config.filePath) {
+    strncpy(app->gui.selectedFileName, config.filePath, sizeof(app->gui.selectedFileName));
+    strncpy(app->gui.displayedFileName, config.filePath, sizeof(app->gui.displayedFileName));
+    App_LoadSelectedLogBook(app);
+  }
+  app->gui.activeStyle = config.style;
 }
 
 void Core_Destroy(Core* this) {
@@ -141,18 +148,8 @@ static void App_Loop(App* app) {
     printf("File has been selected\n");
     snprintf(app->gui.selectedFileName, 2048, "%s/%s", app->gui.fileDialogState.dirPathText,
              app->gui.fileDialogState.fileNameText);
-    printf("Loading log from %s\n", app->gui.selectedFileName);
-    if (LogBook_IsLoaded(&app->core.logBook))
-    {
-        LogBook_Destroy(&app->core.logBook);
-        app->core.logBook = LogBook_Init();
-    }
-    LogBook_Load(&app->core.logBook, app->gui.selectedFileName);
-    printf("Loaded %zu logs\n", app->core.logBook.entriesSize);
-    app->core.currentLog = 0;
-    LogBook_Print(&app->core.logBook);
     app->gui.fileDialogState.SelectFilePressed = false;
-    app->gui.diagramNeedsToChange = true;
+    App_LoadSelectedLogBook(app);
   }
 
   if (app->gui.diagramNeedsToChange) {
@@ -164,6 +161,19 @@ static void App_Loop(App* app) {
     }
     app->gui.diagramNeedsToChange = false;
   }
+}
+
+static void App_LoadSelectedLogBook(App* app) {
+  printf("Loading log from %s\n", app->gui.selectedFileName);
+  if (LogBook_IsLoaded(&app->core.logBook)) {
+    LogBook_Destroy(&app->core.logBook);
+    app->core.logBook = LogBook_Init();
+  }
+  LogBook_Load(&app->core.logBook, app->gui.selectedFileName);
+  printf("Loaded %zu logs\n", app->core.logBook.entriesSize);
+  app->core.currentLog = 0;
+  LogBook_Print(&app->core.logBook);
+  app->gui.diagramNeedsToChange = true;
 }
 
 static void Gui_ChangeStyle(Gui* gui) {
@@ -236,8 +246,7 @@ static void DrawToolbar(App* app) {
       // app->gui.displayedFileName = realloc(app->gui.displayedFileName, strlen(app->gui.selectedFileName)+1 -
       // textStartOffset + 3);
       snprintf(app->gui.displayedFileName, 128, "...%s", app->gui.selectedFileName + textStartOffset);
-    }
-    else {
+    } else {
       snprintf(app->gui.displayedFileName, 128, "%.127s", app->gui.selectedFileName);
     }
   }
@@ -265,7 +274,8 @@ static void DrawToolbar(App* app) {
 
   FlowLayout_Destroy(&toolbarLayout);
 
-  const Vector2 TOOLBAR2_POSITION = {.x = app->gui.windowMargins.x, .y = app->gui.windowMargins.y + TOOLBAR_H + app->gui.windowPaddings.y};
+  const Vector2 TOOLBAR2_POSITION = {.x = app->gui.windowMargins.x,
+                                     .y = app->gui.windowMargins.y + TOOLBAR_H + app->gui.windowPaddings.y};
   FlowLayout toolbar2Layout = FlowLayout_Init(TOOLBAR2_POSITION, TOOLBAR_PADDINGS);
   GuiLabel(FlowLayout_Add(&toolbar2Layout, 40, TOOLBAR_H), "Layout:");
   GuiComboBox(FlowLayout_Add(&toolbar2Layout, 120, TOOLBAR_H), "Absolute;Relative", &app->core.activeDiagramLayout);
@@ -276,7 +286,7 @@ static void DrawPanel(App* app) {
     GuiSetState(STATE_DISABLED);
   }
   const float PANEL_X = app->gui.windowMargins.x;
-  const float PANEL_Y = app->gui.windowMargins.y + (app->gui.toolbarHeight + app->gui.windowPaddings.y)*2;
+  const float PANEL_Y = app->gui.windowMargins.y + (app->gui.toolbarHeight + app->gui.windowPaddings.y) * 2;
   const float PANEL_W = app->gui.screenWidth - PANEL_X - app->gui.windowMargins.x - app->gui.scrollPanelBoundsOffset.x;
   const float PANEL_H = app->gui.screenHeight - PANEL_Y - app->gui.windowMargins.y - app->gui.scrollPanelBoundsOffset.y;
   GuiScrollPanel((Rectangle){PANEL_X, PANEL_Y, PANEL_W, PANEL_H}, NULL,

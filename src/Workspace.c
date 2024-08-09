@@ -6,6 +6,7 @@
 #include <gui_window_file_dialog.h>
 #include <raygui.h>
 
+#include <limits.h>
 #include <math.h>
 #include <raylib.h>
 #include <stdio.h>
@@ -80,21 +81,23 @@ static void DrawGraph(const Core* core, float procent, const Vector2* scrollOffs
 
   for (size_t i = 0; i < diagram->nodesSize; ++i) {
     Node* node = &diagram->nodes[i];
-    if (i == selectedNode) {
-      GuiSetState(STATE_PRESSED);
-    } else {
-      switch (node->status) {
-        case EStatus_Finished:
-          GuiSetState(STATE_DISABLED);
-          break;
-        case EStatus_Ongoing:
-          GuiSetState(STATE_FOCUSED);
-          break;
-        default:
+
+    switch (node->status) {
+      case EStatus_Finished:
+        GuiSetState(STATE_DISABLED);
+        break;
+      case EStatus_Ongoing:
+        GuiSetState(STATE_FOCUSED);
+        break;
+      default:
+        if (i == selectedNode) {
+          GuiSetState(STATE_PRESSED);
+        } else {
           GuiSetState(STATE_NORMAL);
-          break;
-      }
+        }
+        break;
     }
+
     if (GuiButton((Rectangle){coords[i].x + scrollOffset->x, coords[i].y + scrollOffset->y, ds.NODE_W, ds.NODE_H},
                   LogBook_GetNodeName(&core->logBook, node->nodeName))) {
       selectedNode = i;
@@ -193,13 +196,13 @@ static void BuildRelativeLayout(Vector2* result, const Diagram* diagram, const s
           levelsOfDependency[j] = 0;
           DynamicArray_Pop(size_t, stack);
         } else {
-          size_t max = 0;
+          int max = 0;
           for (size_t k = 0; diagram->nodes[j].dependencies[k] != (size_t)-1; ++k) {
             size_t dependency = diagram->nodes[j].dependencies[k];
             if (levelsOfDependency[dependency] == UNKNOWN) {
               DynamicArray_Push(stack, dependency);
               levelsOfDependency[dependency] = DURING_CALCULATION;
-              max = (size_t)-1;
+              max = INT_MAX;
             } else if (levelsOfDependency[dependency] != DURING_CALCULATION) {
               if (max != (size_t)-1 && max < levelsOfDependency[dependency]) {
                 max = levelsOfDependency[dependency];
