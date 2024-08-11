@@ -9,7 +9,7 @@ typedef struct Node {
   time_t timestamp;
   EStatus status;
   size_t nodeName;
-  size_t dependencies[128]; //indexes of nodes in Diagram.nodes
+  size_t dependencies[128]; //indexes of nodes in Graph.nodes
 } Node;
 
 typedef struct Edge {
@@ -17,14 +17,14 @@ typedef struct Edge {
   size_t destination;
 } Edge;
 
-typedef struct Diagram {
+typedef struct Graph {
   Node* nodes;
   size_t nodesSize;
   Vector2* coordinates;
   Edge* edges;
   size_t edgesSize;
-} Diagram;
+} Graph;
 
-void Diagram_Destroy(Diagram* this);
-Diagram Diagram_Init(const struct LogBook* logBook, size_t currentLogIndex);
-void Diagram_Copy(Diagram* target, const Diagram* source);
+void Graph_Destroy(Graph* this);
+Graph Graph_Init(const struct LogBook* logBook, size_t currentLogIndex);
+void Graph_Copy(Graph* target, const Graph* source);

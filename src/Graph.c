@@ -1,4 +1,4 @@
-#include "Diagram.h"
+#include "Graph.h"
 #include "DynamicArray.h"
 #include "LogBook.h"
 
@@ -7,10 +7,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-static Node* Diagram_FindNode(Diagram const* diagram, size_t nodeName);
-static Edge* Diagram_FindEdge(Diagram const* diagram, size_t source, size_t destination);
+static Node* Graph_FindNode(Graph const* graph, size_t nodeName);
+static Edge* Graph_FindEdge(Graph const* graph, size_t source, size_t destination);
 
-void Diagram_Destroy(Diagram* this) {
+void Graph_Destroy(Graph* this) {
   free(this->edges);
   this->edgesSize = 0;
   free(this->coordinates);
@@ -18,8 +18,8 @@ void Diagram_Destroy(Diagram* this) {
   this->nodesSize = 0;
 }
 
-Diagram Diagram_Init(const struct LogBook* logBook, size_t currentLogIndex) {
-  Diagram this = {
+Graph Graph_Init(const struct LogBook* logBook, size_t currentLogIndex) {
+  Graph this = {
       .nodes = NULL,
       .nodesSize = 0,
       .coordinates = NULL,
@@ -58,7 +58,7 @@ Diagram Diagram_Init(const struct LogBook* logBook, size_t currentLogIndex) {
 
         size_t i = 0;
         while (log->dependencies[i] != 0) {
-          node->dependencies[i] = Diagram_FindNode(&this, log->dependencies[i]) - this.nodes;
+          node->dependencies[i] = Graph_FindNode(&this, log->dependencies[i]) - this.nodes;
           ++i;
         }
         node->dependencies[i] = (size_t)-1;
@@ -74,7 +74,7 @@ Diagram Diagram_Init(const struct LogBook* logBook, size_t currentLogIndex) {
       }
 
       case EOperation_Remove: {
-        Node* node = Diagram_FindNode(&this, log->nodeName);
+        Node* node = Graph_FindNode(&this, log->nodeName);
         if (node == NULL) {
           fprintf(stderr, "Unable to find node '%s' at log %ld", LogBook_GetNodeName(logBook, log->nodeName),
                   log->timestamp);
@@ -85,7 +85,7 @@ Diagram Diagram_Init(const struct LogBook* logBook, size_t currentLogIndex) {
       }
 
       case EOperation_StatusChange: {
-        Node* node = Diagram_FindNode(&this, log->nodeName);
+        Node* node = Graph_FindNode(&this, log->nodeName);
         if (node == NULL) {
           fprintf(stderr, "Unable to find node '%s' at log %ld", LogBook_GetNodeName(logBook, log->nodeName),
                   log->timestamp);
@@ -96,7 +96,7 @@ Diagram Diagram_Init(const struct LogBook* logBook, size_t currentLogIndex) {
       }
 
       case EOperation_AddDependency: {
-        Node* node = Diagram_FindNode(&this, log->nodeName);
+        Node* node = Graph_FindNode(&this, log->nodeName);
         if (node == NULL) {
           fprintf(stderr, "Unable to find node '%s' at log %ld", LogBook_GetNodeName(logBook, log->nodeName),
                   log->timestamp);
@@ -109,7 +109,7 @@ Diagram Diagram_Init(const struct LogBook* logBook, size_t currentLogIndex) {
         }
 
         for (size_t i = 0; log->dependencies[i] != 0; ++i) {
-          size_t dependencyIndex = Diagram_FindNode(&this, log->dependencies[i]) - this.nodes;
+          size_t dependencyIndex = Graph_FindNode(&this, log->dependencies[i]) - this.nodes;
           if (node == NULL) {
             fprintf(stderr, "Unable to find node '%s' at log %ld", LogBook_GetNodeName(logBook, dependencyIndex),
                     log->timestamp);
@@ -127,7 +127,7 @@ Diagram Diagram_Init(const struct LogBook* logBook, size_t currentLogIndex) {
       }
 
       case EOperation_RemoveDependency: {
-        Node* node = Diagram_FindNode(&this, log->nodeName);
+        Node* node = Graph_FindNode(&this, log->nodeName);
         if (node == NULL) {
           fprintf(stderr, "Unable to find node '%s' at log %ld", LogBook_GetNodeName(logBook, log->nodeName),
                   log->timestamp);
@@ -141,14 +141,14 @@ Diagram Diagram_Init(const struct LogBook* logBook, size_t currentLogIndex) {
         --nodeDependenciesLast;
 
         for (const size_t* logDep = log->dependencies; *logDep != 0; ++logDep) {
-          size_t logDependencyIndex = Diagram_FindNode(&this, *logDep) - this.nodes;
+          size_t logDependencyIndex = Graph_FindNode(&this, *logDep) - this.nodes;
           size_t* nodeDependencyIndex = node->dependencies;
           while (*nodeDependencyIndex != (size_t)-1) {
             if (*nodeDependencyIndex == logDependencyIndex) {
               *nodeDependencyIndex = *nodeDependenciesLast;
               *nodeDependenciesLast = (size_t)-1;
               --nodeDependenciesLast;
-              Edge* unwantedEdge = Diagram_FindEdge(&this, logDependencyIndex, node - this.nodes);
+              Edge* unwantedEdge = Graph_FindEdge(&this, logDependencyIndex, node - this.nodes);
               *unwantedEdge = this.edges[--this.edgesSize];
             } else {
               ++nodeDependencyIndex;
@@ -164,8 +164,8 @@ Diagram Diagram_Init(const struct LogBook* logBook, size_t currentLogIndex) {
   return this;
 }
 
-void Diagram_Copy(Diagram* target, const Diagram* source) {
-  memcpy(target, source, sizeof(Diagram));
+void Graph_Copy(Graph* target, const Graph* source) {
+  memcpy(target, source, sizeof(Graph));
   target->nodes = calloc(sizeof(Node), target->nodesSize);
   memcpy(target->nodes, source->nodes, sizeof(Node) * target->nodesSize);
   target->coordinates = calloc(sizeof(Vector2), target->nodesSize);
@@ -174,8 +174,8 @@ void Diagram_Copy(Diagram* target, const Diagram* source) {
   memcpy(target->edges, source->edges, sizeof(Edge) * target->edgesSize);
 }
 
-static Node* Diagram_FindNode(Diagram const* diagram, size_t nodeName) {
-  for (Node* it = diagram->nodes; it < diagram->nodes + diagram->nodesSize; ++it) {
+static Node* Graph_FindNode(Graph const* graph, size_t nodeName) {
+  for (Node* it = graph->nodes; it < graph->nodes + graph->nodesSize; ++it) {
     if (nodeName == it->nodeName) {
       return it;
     }
@@ -183,8 +183,8 @@ static Node* Diagram_FindNode(Diagram const* diagram, size_t nodeName) {
   return NULL;
 }
 
-static Edge* Diagram_FindEdge(Diagram const* diagram, size_t source, size_t destination) {
-  for (Edge* it = diagram->edges; it < diagram->edges + diagram->edgesSize; ++it) {
+static Edge* Graph_FindEdge(Graph const* graph, size_t source, size_t destination) {
+  for (Edge* it = graph->edges; it < graph->edges + graph->edgesSize; ++it) {
     if (source == it->source && destination == it->destination) {
       return it;
     }

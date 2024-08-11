@@ -1,6 +1,7 @@
+#include "Workspace.h"
 
 #include "App.h"
-#include "Diagram.h"
+#include "Graph.h"
 #include "LogBook.h"
 
 #include <gui_window_file_dialog.h>
@@ -13,17 +14,24 @@
 #include <stdlib.h>
 #include <string.h>
 
+typedef struct Workspace {
+  size_t selectedNode;
+  int diagramLayout;
+  Vector2* coordinates;
+  Vector2* previousCoordinates;
+} Workspace;
+
 typedef struct Core {
   LogBook logBook;
   size_t currentLog;
-  int activeDiagramLayout;
-  Diagram oldDiagram;
-  Diagram currentDiagram;
+  Graph oldGraph;
+  Graph currentGraph;
+  Workspace* workspace;
 } Core;
 
-static void DrawGraph(const Core* core, float procent, const Vector2* scrollOffset);
-static void BuildAbsoluteLayout(Vector2* result, const Diagram* diagram);
-static void BuildRelativeLayout(Vector2* result, const Diagram* diagram, const size_t selectedNode);
+static void DrawDiagram(const Core* core, float procent, const Vector2* scrollOffset);
+static void BuildAbsoluteLayout(Vector2* result, const Graph* graph);
+static void BuildRelativeLayout(Vector2* result, const Graph* graph, const size_t selectedNode);
 static void DrawEdge(const Vector2* coordinates, const Edge* edge, const Vector2* scrollOffset);
 
 typedef struct DiagramStyle {
@@ -44,43 +52,89 @@ struct DiagramStyle DiagramStyle_Default() {
   };
 }
 
+size_t Workspace_SizeOf() {
+  return sizeof(Workspace);
+}
+
+void Workspace_Init(Workspace* this) {
+  this->selectedNode = 0;
+  this->diagramLayout = 0;
+  this->coordinates = NULL;
+  this->previousCoordinates = NULL;
+}
+
+void Workspace_Destroy(Workspace* this) {
+  this->selectedNode = 0;
+  this->diagramLayout = 0;
+
+  if (this->coordinates) {
+    free(this->coordinates);
+  }
+  if (this->previousCoordinates) {
+    free(this->previousCoordinates);
+  }
+}
+
+void Workspace_SetDiagramLayout(Workspace* this, int diagramLayout) {
+  this->diagramLayout = diagramLayout;
+}
+
+int* Workspace_PointDiagramLayout(Workspace* this) {
+  return &this->diagramLayout;
+}
+
 void Workspace_Draw(const Core* core, float animationProgress, const Vector2* scrollOffset) {
   float deltaPosition = 1.0;
   if (animationProgress < 1.0) {
     deltaPosition = 0.5 + 0.5 * sinf(animationProgress * 3.14 - 1.57);
   }
-  DrawGraph(core, deltaPosition, scrollOffset);
+  Workspace_BuildLayout(core->workspace, &core->currentGraph);
+  DrawDiagram(core, deltaPosition, scrollOffset);
 }
 
-static void DrawGraph(const Core* core, float procent, const Vector2* scrollOffset) {
-  DiagramStyle ds = DiagramStyle_Default();
-  static size_t selectedNode = 0;
-  const Diagram* diagram = &core->currentDiagram;
-  const Diagram* oldDiagram = &core->oldDiagram;
-  if (core->activeDiagramLayout == 0) {
-    BuildAbsoluteLayout(diagram->coordinates, diagram);
+void Workspace_BuildLayout(Workspace* workspace, const Graph* graph) {
+  if (workspace->previousCoordinates) {
+    free(workspace->previousCoordinates);
+  }
+  workspace->previousCoordinates = workspace->coordinates;
+  workspace->coordinates = calloc(graph->nodesSize, sizeof(Vector2));
+  if (workspace->diagramLayout == 0) {
+    BuildAbsoluteLayout(workspace->coordinates, graph);
   } else {
-    if (selectedNode >= diagram->nodesSize) {
-      selectedNode = 0;
+    size_t centralNode = workspace->selectedNode;
+    if (centralNode >= graph->nodesSize) {
+      centralNode = (size_t)-1;
     }
-    BuildRelativeLayout(diagram->coordinates, diagram, selectedNode);
+    BuildRelativeLayout(workspace->coordinates, graph, centralNode);
+  }
+}
+
+static void DrawDiagram(const Core* core, float procent, const Vector2* scrollOffset) {
+  if (!core || !core->workspace) {
+    return;
   }
 
-  size_t nodesSize = diagram->nodesSize < oldDiagram->nodesSize ? oldDiagram->nodesSize : diagram->nodesSize;
+  DiagramStyle ds = DiagramStyle_Default();
+  const Graph* graph = &core->currentGraph;
+  const Graph* oldGraph = &core->oldGraph;
+  const Vector2* oldCoords = core->workspace->previousCoordinates;
+  const Vector2* newCoords = core->workspace->coordinates;
+
+  size_t nodesSize = graph->nodesSize < oldGraph->nodesSize ? oldGraph->nodesSize : graph->nodesSize;
   Vector2 coords[nodesSize];
   for (size_t i = 0; i != nodesSize; ++i) {
-    if (i < oldDiagram->nodesSize && i < diagram->nodesSize) {
-      coords[i].x = oldDiagram->coordinates[i].x * (1.0 - procent) + diagram->coordinates[i].x * procent;
-      coords[i].y = oldDiagram->coordinates[i].y * (1.0 - procent) + diagram->coordinates[i].y * procent;
-    } else if (i >= oldDiagram->nodesSize) {
-      coords[i] = diagram->coordinates[i];
+    if (i < oldGraph->nodesSize && i < graph->nodesSize) {
+      coords[i].x = oldCoords[i].x * (1.0 - procent) + newCoords[i].x * procent;
+      coords[i].y = oldCoords[i].y * (1.0 - procent) + newCoords[i].y * procent;
+    } else if (i >= oldGraph->nodesSize) {
+      coords[i] = newCoords[i];
     } else {
-      coords[i] = oldDiagram->coordinates[i];
+      coords[i] = oldCoords[i];
     }
   }
 
-  for (size_t i = 0; i < diagram->nodesSize; ++i) {
-    Node* node = &diagram->nodes[i];
+  for (size_t i = 0; i < graph->nodesSize; ++i) {
+    Node* node = &graph->nodes[i];
 
     switch (node->status) {
       case EStatus_Finished:
@@ -90,7 +144,7 @@ static void DrawGraph(const Core* core, float procent, const Vector2* scrollOffs
         GuiSetState(STATE_FOCUSED);
         break;
       default:
-        if (i == selectedNode) {
+        if (i == core->workspace->selectedNode) {
           GuiSetState(STATE_PRESSED);
         } else {
           GuiSetState(STATE_NORMAL);
@@ -100,37 +154,37 @@ static void DrawGraph(const Core* core, float procent, const Vector2* scrollOffs
 
     if (GuiButton((Rectangle){coords[i].x + scrollOffset->x, coords[i].y + scrollOffset->y, ds.NODE_W, ds.NODE_H},
                   LogBook_GetNodeName(&core->logBook, node->nodeName))) {
-      selectedNode = i;
+      core->workspace->selectedNode = i;
     };
   }
 
-  for (size_t i = 0; i < diagram->edgesSize; ++i) {
-    DrawEdge(coords, &diagram->edges[i], scrollOffset);
+  for (size_t i = 0; i < graph->edgesSize; ++i) {
+    DrawEdge(coords, &graph->edges[i], scrollOffset);
   }
 
   GuiSetState(STATE_NORMAL);
 }
 
-static void BuildAbsoluteLayout(Vector2* result, const Diagram* diagram) {
+static void BuildAbsoluteLayout(Vector2* result, const Graph* graph) {
   DiagramStyle ds = DiagramStyle_Default();
   int nodesInColumn[16];
   memset(&nodesInColumn, '\0', sizeof(nodesInColumn));
-  int levelsOfDependency[diagram->nodesSize];
+  int levelsOfDependency[graph->nodesSize];
   memset(levelsOfDependency, -1, sizeof(levelsOfDependency));
 
   DynamicArray* stack = DynamicArray_Make(size_t);
-  for (size_t i = 0; i < diagram->nodesSize; ++i) {
+  for (size_t i = 0; i < graph->nodesSize; ++i) {
     if (levelsOfDependency[i] == -1) {
       DynamicArray_Push(stack, i);
       while (DynamicArray_Size(size_t, stack) != 0) {
         size_t j = *(DynamicArray_End(size_t, stack) - 1);
-        if (diagram->nodes[j].dependencies[0] == (size_t)-1) {
+        if (graph->nodes[j].dependencies[0] == (size_t)-1) {
           levelsOfDependency[j] = 0;
           DynamicArray_Pop(size_t, stack);
         } else {
           size_t max = 0;
-          for (size_t k = 0; diagram->nodes[j].dependencies[k] != (size_t)-1; ++k) {
-            size_t dependency = diagram->nodes[j].dependencies[k];
+          for (size_t k = 0; graph->nodes[j].dependencies[k] != (size_t)-1; ++k) {
+            size_t dependency = graph->nodes[j].dependencies[k];
             if (levelsOfDependency[dependency] == -1) {
               DynamicArray_Push(stack, dependency);
               levelsOfDependency[dependency] = -2;
@@ -157,24 +211,24 @@ static void BuildAbsoluteLayout(Vector2* result, const Diagram* diagram) {
   free(stack);
 }
 
-static void BuildRelativeLayout(Vector2* result, const Diagram* diagram, const size_t selectedNode) {
+static void BuildRelativeLayout(Vector2* result, const Graph* graph, const size_t startNode) {
   DiagramStyle ds = DiagramStyle_Default();
   int minLevel = 0;
-  int levelsOfDependency[diagram->nodesSize];
+  int levelsOfDependency[graph->nodesSize];
 
   const int UNKNOWN = 1024 * 64 - 1;
   const int DURING_CALCULATION = UNKNOWN - 1;
-  for (size_t i = 0; i < diagram->nodesSize; ++i) {
+  for (size_t i = 0; i < graph->nodesSize; ++i) {
     levelsOfDependency[i] = UNKNOWN;
   }
-
+  size_t centralNode = startNode == (size_t) -1 ? 0: startNode;
   DynamicArray* stack = DynamicArray_Make(size_t);
-  levelsOfDependency[selectedNode] = 0;
-  DynamicArray_Push(stack, selectedNode);
+  levelsOfDependency[centralNode] = 0;
+  DynamicArray_Push(stack, centralNode);
   while (DynamicArray_Size(size_t, stack) != 0) {
     size_t current = *(DynamicArray_Pop(size_t, stack));
-    for (size_t k = 0; diagram->nodes[current].dependencies[k] != (size_t)-1; ++k) {
-      size_t dependency = diagram->nodes[current].dependencies[k];
+    for (size_t k = 0; graph->nodes[current].dependencies[k] != (size_t)-1; ++k) {
+      size_t dependency = graph->nodes[current].dependencies[k];
       if (levelsOfDependency[dependency] == UNKNOWN) {
         DynamicArray_Push(stack, dependency);
         levelsOfDependency[dependency] = levelsOfDependency[current] - 1;
@@ -187,18 +241,18 @@ static void BuildRelativeLayout(Vector2* result, const Diagram* diagram, const s
 
   int nodesInColumn[16];
   memset(&nodesInColumn, '\0', sizeof(nodesInColumn));
-  for (size_t i = 0; i < diagram->nodesSize; ++i) {
+  for (size_t i = 0; i < graph->nodesSize; ++i) {
     if (levelsOfDependency[i] == UNKNOWN) {
       DynamicArray_Push(stack, i);
       while (DynamicArray_Size(size_t, stack) != 0) {
         size_t j = *(DynamicArray_End(size_t, stack) - 1);
-        if (diagram->nodes[j].dependencies[0] == (size_t)-1) {
+        if (graph->nodes[j].dependencies[0] == (size_t)-1) {
           levelsOfDependency[j] = 0;
           DynamicArray_Pop(size_t, stack);
         } else {
           int max = INT_MIN;
-          for (size_t k = 0; diagram->nodes[j].dependencies[k] != (size_t)-1; ++k) {
-            size_t dependency = diagram->nodes[j].dependencies[k];
+          for (size_t k = 0; graph->nodes[j].dependencies[k] != (size_t)-1; ++k) {
+            size_t dependency = graph->nodes[j].dependencies[k];
             if (levelsOfDependency[dependency] == UNKNOWN) {
               DynamicArray_Push(stack, dependency);
               levelsOfDependency[dependency] = DURING_CALCULATION;

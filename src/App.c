@@ -1,7 +1,7 @@
 #include "App.h"
-#include "Diagram.h"
 #include "DynamicArray.h"
 #include "FlowLayout.h"
+#include "Graph.h"
 #include "LogBook.h"
 #include "Workspace.h"
 
@@ -39,9 +39,9 @@ const char* const GUI_STYLES_COMBOLIST =
 typedef struct Core {
   LogBook logBook;
   size_t currentLog;
-  int activeDiagramLayout;
-  Diagram oldDiagram;
-  Diagram currentDiagram;
+  Graph oldGraph;
+  Graph currentGraph;
+  Workspace* workspace;
 } Core;
 
 typedef struct Gui {
@@ -60,7 +60,7 @@ typedef struct Gui {
   Vector2 scrollPanelScrollOffset;
   Vector2 scrollPanelBoundsOffset;
   GuiWindowFileDialogState fileDialogState;
-  bool diagramNeedsToChange;
+  bool graphNeedsToChange;
 } Gui;
 
 typedef struct App {
@@ -86,9 +86,9 @@ void App_Init(App* app, const Config config) {
           {
               .logBook = LogBook_Init(),
               .currentLog = 0,
-              .oldDiagram = Diagram_Init(NULL, 0),
-              .currentDiagram = Diagram_Init(NULL, 0),
-              .activeDiagramLayout = 0,
+              .oldGraph = Graph_Init(NULL, 0),
+              .currentGraph = Graph_Init(NULL, 0),
+              .workspace = NULL,
           },
       .changeProcent = 1.0,
       .gui =
@@ -108,9 +108,12 @@ void App_Init(App* app, const Config config) {
               .scrollPanelScrollOffset = {.x = 0, .y = 0},
               .scrollPanelBoundsOffset = {.x = 0, .y = 0},
               .fileDialogState = InitGuiWindowFileDialog(NULL),
-              .diagramNeedsToChange = false,
+              .graphNeedsToChange = false,
           },
   };
+  app->core.workspace = malloc(Workspace_SizeOf());
+  Workspace_Init(app->core.workspace);
+
   if (config.filePath) {
     strncpy(app->gui.selectedFileName, config.filePath, sizeof(app->gui.selectedFileName));
     strncpy(app->gui.displayedFileName, config.filePath, sizeof(app->gui.displayedFileName));
@@ -121,8 +124,8 @@ void App_Init(App* app, const Config config) {
 
 void Core_Destroy(Core* this) {
   LogBook_Destroy(&this->logBook);
-  Diagram_Destroy(&this->oldDiagram);
-  Diagram_Destroy(&this->currentDiagram);
+  Graph_Destroy(&this->oldGraph);
+  Graph_Destroy(&this->currentGraph);
 }
 
 void App_Destroy(App* this) {
@@ -152,14 +155,14 @@ static void App_Loop(App* app) {
     App_LoadSelectedLogBook(app);
   }
 
-  if (app->gui.diagramNeedsToChange) {
-    printf("Diagram update!\n");
+  if (app->gui.graphNeedsToChange) {
+    printf("Graph update!\n");
     if (app->core.logBook.entriesSize > app->core.currentLog) {
-      Diagram_Destroy(&app->core.currentDiagram);
-      app->core.currentDiagram = Diagram_Init(&app->core.logBook, app->core.currentLog);
+      Graph_Destroy(&app->core.currentGraph);
+      app->core.currentGraph = Graph_Init(&app->core.logBook, app->core.currentLog);
       snprintf(app->gui.selectedTimestamp, 24, "%ld", app->core.logBook.entries[app->core.currentLog].timestamp);
     }
-    app->gui.diagramNeedsToChange = false;
+    app->gui.graphNeedsToChange = false;
   }
 }
 
@@ -173,7 +176,7 @@ static void App_LoadSelectedLogBook(App* app) {
   printf("Loaded %zu logs\n", app->core.logBook.entriesSize);
   app->core.currentLog = 0;
   LogBook_Print(&app->core.logBook);
-  app->gui.diagramNeedsToChange = true;
+  app->gui.graphNeedsToChange = true;
 }
 
 static void Gui_ChangeStyle(Gui* gui) {
@@ -254,18 +257,18 @@ static void DrawToolbar(App* app) {
 
   if (GuiButton(FlowLayout_Add(&toolbarLayout, TOOLBAR_H, TOOLBAR_H), "<")) {
     app->core.currentLog = 0 == app->core.currentLog ? app->core.currentLog : app->core.currentLog - 1;
-    app->gui.diagramNeedsToChange = true;
-    Diagram_Destroy(&app->core.oldDiagram);
-    Diagram_Copy(&app->core.oldDiagram, &app->core.currentDiagram);
+    app->gui.graphNeedsToChange = true;
+    Graph_Destroy(&app->core.oldGraph);
+    Graph_Copy(&app->core.oldGraph, &app->core.currentGraph);
     app->changeProcent = 0.0;
   }
   GuiLabel(FlowLayout_Add(&toolbarLayout, 160, TOOLBAR_H), app->gui.selectedTimestamp);
   if (GuiButton(FlowLayout_Add(&toolbarLayout, TOOLBAR_H, TOOLBAR_H), ">")) {
     app->core.currentLog = app->core.currentLog + 1 >= app->core.logBook.entriesSize ? app->core.logBook.entriesSize - 1
                                                                                      : app->core.currentLog + 1;
-    app->gui.diagramNeedsToChange = true;
-    Diagram_Destroy(&app->core.oldDiagram);
-    Diagram_Copy(&app->core.oldDiagram, &app->core.currentDiagram);
+    app->gui.graphNeedsToChange = true;
+    Graph_Destroy(&app->core.oldGraph);
+    Graph_Copy(&app->core.oldGraph, &app->core.currentGraph);
     app->changeProcent = 0.0;
   }
 
@@ -278,7 +281,8 @@ static void DrawToolbar(App* app) {
                                      .y = app->gui.windowMargins.y + TOOLBAR_H + app->gui.windowPaddings.y};
   FlowLayout toolbar2Layout = FlowLayout_Init(TOOLBAR2_POSITION, TOOLBAR_PADDINGS);
   GuiLabel(FlowLayout_Add(&toolbar2Layout, 40, TOOLBAR_H), "Layout:");
-  GuiComboBox(FlowLayout_Add(&toolbar2Layout, 120, TOOLBAR_H), "Absolute;Relative", &app->core.activeDiagramLayout);
+  GuiComboBox(FlowLayout_Add(&toolbar2Layout, 120, TOOLBAR_H), "Absolute;Relative",
+              Workspace_PointDiagramLayout(app->core.workspace));
 }
 
 static void DrawPanel(App* app) {
@@ -297,7 +301,7 @@ static void DrawPanel(App* app) {
   BeginScissorMode(app->gui.scrollPanelView.x, app->gui.scrollPanelView.y,
                    app->gui.scrollPanelView.width - app->gui.scrollPanelBoundsOffset.x,
                    app->gui.scrollPanelView.height - app->gui.scrollPanelBoundsOffset.y);
-  if (app->core.logBook.entriesSize > 0) {
+  if (app->core.logBook.entriesSize > 0 && app->core.workspace) {
     Vector2 workspaceOffset = {
         .x = app->gui.scrollPanelView.x + app->gui.scrollPanelScrollOffset.x,
         .y = app->gui.scrollPanelView.y + app->gui.scrollPanelScrollOffset.y,

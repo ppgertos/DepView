@@ -22,7 +22,7 @@ add_executable(${CMAKE_PROJECT_NAME}
   src/main.c
 
   src/App.c
-  src/Diagram.c
+  src/Graph.c
   src/DynamicArray.c
   src/LogBook.c
   src/StringContainer.c
