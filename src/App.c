@@ -157,10 +157,14 @@ static void App_Loop(App* app) {
 
   if (app->gui.graphNeedsToChange) {
     printf("Graph update!\n");
+    app->changeProcent = 0.0;
     if (app->core.logBook.entriesSize > app->core.currentLog) {
+      Graph_Destroy(&app->core.oldGraph);
+      Graph_Copy(&app->core.oldGraph, &app->core.currentGraph);
       Graph_Destroy(&app->core.currentGraph);
       app->core.currentGraph = Graph_Init(&app->core.logBook, app->core.currentLog);
       snprintf(app->gui.selectedTimestamp, 24, "%ld", app->core.logBook.entries[app->core.currentLog].timestamp);
+      Workspace_BuildLayout(app->core.workspace, &app->core.currentGraph);
     }
     app->gui.graphNeedsToChange = false;
   }
@@ -258,18 +262,12 @@ static void DrawToolbar(App* app) {
   if (GuiButton(FlowLayout_Add(&toolbarLayout, TOOLBAR_H, TOOLBAR_H), "<")) {
     app->core.currentLog = 0 == app->core.currentLog ? app->core.currentLog : app->core.currentLog - 1;
     app->gui.graphNeedsToChange = true;
-    Graph_Destroy(&app->core.oldGraph);
-    Graph_Copy(&app->core.oldGraph, &app->core.currentGraph);
-    app->changeProcent = 0.0;
   }
   GuiLabel(FlowLayout_Add(&toolbarLayout, 160, TOOLBAR_H), app->gui.selectedTimestamp);
   if (GuiButton(FlowLayout_Add(&toolbarLayout, TOOLBAR_H, TOOLBAR_H), ">")) {
     app->core.currentLog = app->core.currentLog + 1 >= app->core.logBook.entriesSize ? app->core.logBook.entriesSize - 1
                                                                                      : app->core.currentLog + 1;
     app->gui.graphNeedsToChange = true;
-    Graph_Destroy(&app->core.oldGraph);
-    Graph_Copy(&app->core.oldGraph, &app->core.currentGraph);
-    app->changeProcent = 0.0;
   }
 
   GuiLabel(FlowLayout_Add(&toolbarLayout, 40, TOOLBAR_H), "Style:");

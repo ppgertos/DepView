@@ -4,7 +4,6 @@
 #include "Graph.h"
 #include "LogBook.h"
 
-#include <gui_window_file_dialog.h>
 #include <raygui.h>
 
 #include <limits.h>
@@ -42,7 +41,7 @@ typedef struct DiagramStyle {
   const float MARGIN;
 } DiagramStyle;
 
-struct DiagramStyle DiagramStyle_Default() {
+DiagramStyle DiagramStyle_Default() {
   return (DiagramStyle){
       .VERT_PADDING = 10,
       .HORI_PADDING = 15,
@@ -88,15 +87,21 @@ void Workspace_Draw(const Core* core, float animationProgress, const Vector2* sc
   if (animationProgress < 1.0) {
     deltaPosition = 0.5 + 0.5 * sinf(animationProgress * 3.14 - 1.57);
   }
-  Workspace_BuildLayout(core->workspace, &core->currentGraph);
   DrawDiagram(core, deltaPosition, scrollOffset);
 }
 
 void Workspace_BuildLayout(Workspace* workspace, const Graph* graph) {
   if (workspace->previousCoordinates) {
     free(workspace->previousCoordinates);
+    workspace->previousCoordinates = NULL;
   }
-  workspace->previousCoordinates = workspace->coordinates;
+  if (workspace->coordinates != NULL)
+  {
+    workspace->previousCoordinates = workspace->coordinates;
+  }
+  else {
+    workspace->previousCoordinates = calloc(graph->nodesSize, sizeof(Vector2));
+  }
   workspace->coordinates = calloc(graph->nodesSize, sizeof(Vector2));
   if (workspace->diagramLayout == 0) {
     BuildAbsoluteLayout(workspace->coordinates, graph);
@@ -107,6 +112,10 @@ void Workspace_BuildLayout(Workspace* workspace, const Graph* graph) {
     }
     BuildRelativeLayout(workspace->coordinates, graph, centralNode);
   }
+//  if (! workspace->previousCoordinates)
+//  {
+//      workspace->previousCoordinates = workspace->coordinates;
+//  }
 }
 
 static void DrawDiagram(const Core* core, float procent, const Vector2* scrollOffset) {
@@ -121,15 +130,15 @@ static void DrawDiagram(const Core* core, float procent, const Vector2* scrollOf
   const Vector2* newCoords = core->workspace->coordinates;
 
   size_t nodesSize = graph->nodesSize < oldGraph->nodesSize ? oldGraph->nodesSize : graph->nodesSize;
-  Vector2 coords[nodesSize];
+  Vector2 drawCoords[nodesSize];
   for (size_t i = 0; i != nodesSize; ++i) {
-    if (i < oldGraph->nodesSize && i < graph->nodesSize) {
-      coords[i].x = oldCoords[i].x * (1.0 - procent) + newCoords[i].x * procent;
-      coords[i].y = oldCoords[i].y * (1.0 - procent) + newCoords[i].y * procent;
-    } else if (i >= oldGraph->nodesSize) {
-      coords[i] = newCoords[i];
+    if (i >= oldGraph->nodesSize) {
+      drawCoords[i] = newCoords[i];
+    } else if (i >= graph->nodesSize){
+      drawCoords[i] = oldCoords[i];
     } else {
-      coords[i] = oldCoords[i];
+      drawCoords[i].x = oldCoords[i].x * (1.0 - procent) + newCoords[i].x * procent;
+      drawCoords[i].y = oldCoords[i].y * (1.0 - procent) + newCoords[i].y * procent;
     }
   }
 
@@ -152,14 +161,14 @@ static void DrawDiagram(const Core* core, float procent, const Vector2* scrollOf
         break;
     }
 
-    if (GuiButton((Rectangle){coords[i].x + scrollOffset->x, coords[i].y + scrollOffset->y, ds.NODE_W, ds.NODE_H},
+    if (GuiButton((Rectangle){drawCoords[i].x + scrollOffset->x, drawCoords[i].y + scrollOffset->y, ds.NODE_W, ds.NODE_H},
                   LogBook_GetNodeName(&core->logBook, node->nodeName))) {
       core->workspace->selectedNode = i;
     };
   }
 
   for (size_t i = 0; i < graph->edgesSize; ++i) {
-    DrawEdge(coords, &graph->edges[i], scrollOffset);
+    DrawEdge(drawCoords, &graph->edges[i], scrollOffset);
   }
 
   GuiSetState(STATE_NORMAL);
@@ -283,17 +292,17 @@ static void DrawEdge(const Vector2* coordinates, const Edge* edge, const Vector2
 
   Vector2 strip[8];
 
-  // middle of nodes bottom side
+  // middle on bottom side of source node
   {
     strip[0].x = scrollOffset->x + coordinates[edge->source].x + ds.NODE_W / 2;
     strip[0].y = scrollOffset->y + coordinates[edge->source].y + ds.NODE_H;
   }
 
-  strip[1].x = strip[0].x;
-  strip[1].y = strip[0].y + ds.VERT_PADDING / 5 + (edge->source % 9);  // here to add small jumps to distinguish lines
-
   // Line on "edge-bus"
   {
+    strip[1].x = strip[0].x;
+    strip[1].y = strip[0].y + ds.VERT_PADDING / 5 + (edge->source % 9);  // here to add small jumps to distinguish lines
+
     strip[2].x = scrollOffset->x + coordinates[edge->destination].x - ds.HORI_PADDING / 5 -
                  (edge->source % 9);  // here to add small jumps to distinguish lines
     strip[2].y = strip[1].y;
@@ -302,7 +311,7 @@ static void DrawEdge(const Vector2* coordinates, const Edge* edge, const Vector2
     strip[3].y = scrollOffset->y + coordinates[edge->destination].y + ds.NODE_H / 2;
   }
 
-  // middle point on nodes left side
+  // middle point on left side of destination node 
   {
     strip[4].x = scrollOffset->x + coordinates[edge->destination].x;
     strip[4].y = strip[3].y;
