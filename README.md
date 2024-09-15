@@ -1,6 +1,6 @@
 # DepView
 
-A minimal dependency diagram viewer.
+A minimalistic dependency diagram viewer.
 
 ![Screenshot](https://raw.githubusercontent.com/ppgertos/DepView/master/doc/depView.gif)
 
@@ -34,7 +34,6 @@ In opened window click "LOAD FILE" and choose file with logs for which you want 
 ## Further improvements
 
 * Replace text logs file with binary data;
-* Add raygui set of predefined styles for user to choose;
 * Add simple configuration file to keep recently choosen path, and gui theme;
 
 ## Credits

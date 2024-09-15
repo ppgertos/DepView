@@ -167,11 +167,11 @@ static void DrawDiagram(const Core* core, float procent, const Vector2* scrollOf
     };
   }
 
+  GuiSetState(STATE_NORMAL);
+
   for (size_t i = 0; i < graph->edgesSize; ++i) {
     DrawEdge(drawCoords, &graph->edges[i], scrollOffset);
   }
-
-  GuiSetState(STATE_NORMAL);
 }
 
 static void BuildAbsoluteLayout(Vector2* result, const Graph* graph) {

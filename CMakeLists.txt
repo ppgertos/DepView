@@ -24,6 +24,7 @@ add_executable(${CMAKE_PROJECT_NAME}
   src/App.c
   src/Graph.c
   src/DynamicArray.c
+  src/FrameList.c
   src/LogBook.c
   src/StringContainer.c
   src/Workspace.c

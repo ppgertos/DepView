@@ -1,6 +1,7 @@
 #include "App.h"
 #include "DynamicArray.h"
 #include "FlowLayout.h"
+#include "FrameList.h"
 #include "Graph.h"
 #include "LogBook.h"
 #include "Workspace.h"
@@ -61,6 +62,7 @@ typedef struct Gui {
   Vector2 scrollPanelBoundsOffset;
   GuiWindowFileDialogState fileDialogState;
   bool graphNeedsToChange;
+  bool showFrameList;
 } Gui;
 
 typedef struct App {
@@ -209,7 +211,7 @@ static void Gui_ChangeStyle(Gui* gui) {
 }
 
 static void DrawToolbar(App* app);
-static void DrawPanel(App* app);
+static void DrawPanel(const Rectangle rect, App* app);
 
 static void App_Draw(App* app) {
   if (IsWindowResized()) {
@@ -225,7 +227,24 @@ static void App_Draw(App* app) {
   ClearBackground(GetColor(GuiGetStyle(DEFAULT, BACKGROUND_COLOR)));
 
   DrawToolbar(app);
-  DrawPanel(app);
+
+  app->gui.showFrameList = true;  // TODO: Add button to toolbar to toggle this
+
+  const float FRAMELIST_W = 90;
+  const float FRAMELIST_X = app->gui.screenWidth - app->gui.windowMargins.x - FRAMELIST_W;
+  const float PANEL_X = app->gui.windowMargins.x;
+  const float PANEL_Y = app->gui.windowMargins.y + (app->gui.toolbarHeight + app->gui.windowPaddings.y) * 2;
+  const float PANEL_W =
+      app->gui.showFrameList  // fmt
+          ? FRAMELIST_X - PANEL_X - app->gui.windowPaddings.x
+          : app->gui.screenWidth - PANEL_X - app->gui.windowMargins.x - app->gui.scrollPanelBoundsOffset.x;
+  const float PANEL_H = app->gui.screenHeight - PANEL_Y - app->gui.windowMargins.y - app->gui.scrollPanelBoundsOffset.y;
+
+  DrawPanel((Rectangle){PANEL_X, PANEL_Y, PANEL_W, PANEL_H}, app);
+  if (app->gui.showFrameList) {
+    Rectangle framelist_rect = {FRAMELIST_X, PANEL_Y, FRAMELIST_W, PANEL_H};
+    FrameList_Draw(framelist_rect, &app->core.currentLog, &app->gui.graphNeedsToChange, &app->core.logBook);
+  }
   GuiWindowFileDialog(&app->gui.fileDialogState);
 
   EndDrawing();
@@ -259,15 +278,18 @@ static void DrawToolbar(App* app) {
   }
   GuiLabel(FlowLayout_Add(&toolbarLayout, SELECTED_FILE_LABEL_W, TOOLBAR_H), app->gui.displayedFileName);
 
-  if (GuiButton(FlowLayout_Add(&toolbarLayout, TOOLBAR_H, TOOLBAR_H), "<")) {
-    app->core.currentLog = 0 == app->core.currentLog ? app->core.currentLog : app->core.currentLog - 1;
-    app->gui.graphNeedsToChange = true;
-  }
-  GuiLabel(FlowLayout_Add(&toolbarLayout, 160, TOOLBAR_H), app->gui.selectedTimestamp);
-  if (GuiButton(FlowLayout_Add(&toolbarLayout, TOOLBAR_H, TOOLBAR_H), ">")) {
-    app->core.currentLog = app->core.currentLog + 1 >= app->core.logBook.entriesSize ? app->core.logBook.entriesSize - 1
-                                                                                     : app->core.currentLog + 1;
-    app->gui.graphNeedsToChange = true;
+  if (!app->gui.showFrameList) {
+    if (GuiButton(FlowLayout_Add(&toolbarLayout, TOOLBAR_H, TOOLBAR_H), "<")) {
+      app->core.currentLog = 0 == app->core.currentLog ? app->core.currentLog : app->core.currentLog - 1;
+      app->gui.graphNeedsToChange = true;
+    }
+    GuiLabel(FlowLayout_Add(&toolbarLayout, 160, TOOLBAR_H), app->gui.selectedTimestamp);
+    if (GuiButton(FlowLayout_Add(&toolbarLayout, TOOLBAR_H, TOOLBAR_H), ">")) {
+      app->core.currentLog = app->core.currentLog + 1 >= app->core.logBook.entriesSize
+                                 ? app->core.logBook.entriesSize - 1
+                                 : app->core.currentLog + 1;
+      app->gui.graphNeedsToChange = true;
+    }
   }
 
   GuiLabel(FlowLayout_Add(&toolbarLayout, 40, TOOLBAR_H), "Style:");
@@ -283,17 +305,13 @@ static void DrawToolbar(App* app) {
               Workspace_PointDiagramLayout(app->core.workspace));
 }
 
-static void DrawPanel(App* app) {
+static void DrawPanel(const Rectangle rect, App* app) {
   if (app->gui.fileDialogState.windowActive) {
     GuiSetState(STATE_DISABLED);
   }
-  const float PANEL_X = app->gui.windowMargins.x;
-  const float PANEL_Y = app->gui.windowMargins.y + (app->gui.toolbarHeight + app->gui.windowPaddings.y) * 2;
-  const float PANEL_W = app->gui.screenWidth - PANEL_X - app->gui.windowMargins.x - app->gui.scrollPanelBoundsOffset.x;
-  const float PANEL_H = app->gui.screenHeight - PANEL_Y - app->gui.windowMargins.y - app->gui.scrollPanelBoundsOffset.y;
-  GuiScrollPanel((Rectangle){PANEL_X, PANEL_Y, PANEL_W, PANEL_H}, NULL,
-                 (Rectangle){.x = 0, .y = 0, .width = 800, .height = 600}, &app->gui.scrollPanelScrollOffset,
-                 &app->gui.scrollPanelView);
+
+  GuiScrollPanel(rect, NULL, (Rectangle){.x = 0, .y = 0, .width = 800, .height = 600},
+                 &app->gui.scrollPanelScrollOffset, &app->gui.scrollPanelView);
 
   GuiSetState(STATE_NORMAL);
   BeginScissorMode(app->gui.scrollPanelView.x, app->gui.scrollPanelView.y,
