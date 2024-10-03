@@ -1,7 +1,7 @@
 #include "Gui.h"
 #include "Core.h"
-#include "FrameList.h"
 #include "FlowLayout.h"
+#include "FrameList.h"
 #include "Workspace.h"
 
 #define RAYGUI_IMPLEMENTATION
@@ -58,7 +58,7 @@ static void Gui_HandleNewFileName(Gui* this);
 static void Gui_HandleFileSelected(Gui* this, Core* core);
 static void Gui_HandleGraphChange(Gui* this, Core* core);
 static void Gui_DrawToolbar(Gui* this, Core* core);
-static void Gui_DrawPanel(Gui* this, Core* core, const Rectangle rect);
+static void Gui_DrawWorkspacePanel(Gui* this, Core* core, const Rectangle rect);
 
 size_t Gui_SizeOf() {
   return sizeof(Gui);
@@ -85,14 +85,13 @@ void Gui_Init(Gui* this) {
       .changeProcent = 1.0,
   };
   Workspace_Init(this->workspace);
-  memset(this->displayedFileName, '\0', sizeof(this->displayedFileName)/sizeof(char));
+  memset(this->displayedFileName, '\0', sizeof(this->displayedFileName) / sizeof(char));
 }
-void Gui_Destroy(Gui* this){
+void Gui_Destroy(Gui* this) {
   Workspace_Destroy(this->workspace);
 }
 
-void Gui_Loop(Gui* this, Core* core)
-{
+void Gui_Loop(Gui* this, Core* core) {
   Gui_HandleNewFileName(this);
   Gui_HandleFileSelected(this, core);
   Gui_HandleGraphChange(this, core);
@@ -102,15 +101,12 @@ void Gui_SetActiveStyle(Gui* this, int activeStyle) {
   this->activeStyle = activeStyle;
 }
 
-void Gui_SetNewFileName(Gui* this, char* fileName)
-{
-    this->newFileName = fileName;
+void Gui_SetNewFileName(Gui* this, char* fileName) {
+  this->newFileName = fileName;
 }
 
-static void Gui_HandleNewFileName(Gui* this)
-{
-  if (this->newFileName != NULL && this->newFileName[0] != '\0')
-  {
+static void Gui_HandleNewFileName(Gui* this) {
+  if (this->newFileName != NULL && this->newFileName[0] != '\0') {
     float textWidth = MeasureText(this->newFileName, GuiGetFont().baseSize);
     if (textWidth > SELECTED_FILE_LABEL_W) {
       size_t textStartOffset = 3;
@@ -127,8 +123,7 @@ static void Gui_HandleNewFileName(Gui* this)
   }
 }
 
-static void Gui_HandleFileSelected(Gui* this, Core* core) 
-{
+static void Gui_HandleFileSelected(Gui* this, Core* core) {
   if (this->fileDialogState.SelectFilePressed) {
     printf("File has been selected\n");
     snprintf(core->selectedFileName, 2048, "%s/%s", this->fileDialogState.dirPathText,
@@ -138,7 +133,7 @@ static void Gui_HandleFileSelected(Gui* this, Core* core)
   }
 }
 
-void Gui_TriggerGraphChange(Gui* this){
+void Gui_TriggerGraphChange(Gui* this) {
   this->graphNeedsToChange = true;
 }
 
@@ -158,20 +153,17 @@ static void Gui_HandleGraphChange(Gui* this, Core* core) {
   }
 }
 
-void Gui_InitWindow(Gui* this, char* title)
-{
+void Gui_InitWindow(Gui* this, char* title) {
   SetConfigFlags(FLAG_WINDOW_RESIZABLE);
   InitWindow(this->screenWidth, this->screenHeight, title);
   SetTargetFPS(60);
 }
 
-bool Gui_ShouldWindowClose()
-{
- return WindowShouldClose();
+bool Gui_ShouldWindowClose() {
+  return WindowShouldClose();
 }
 
-void Gui_Close()
-{
+void Gui_Close() {
   CloseWindow();
 }
 
@@ -222,11 +214,11 @@ void Gui_Draw(Gui* this, Core* core) {
   const float PANEL_X = this->windowMargins.x;
   const float PANEL_Y = this->windowMargins.y + (this->toolbarHeight + this->windowPaddings.y) * 2;
   const float PANEL_W = this->showFrameList  // fmt
-                            ? FRAMELIST_X - PANEL_X - this->windowPaddings.x
+                            ? FRAMELIST_X - PANEL_X - this->windowPaddings.x - this->scrollPanelBoundsOffset.x
                             : this->screenWidth - PANEL_X - this->windowMargins.x - this->scrollPanelBoundsOffset.x;
   const float PANEL_H = this->screenHeight - PANEL_Y - this->windowMargins.y - this->scrollPanelBoundsOffset.y;
 
-  Gui_DrawPanel(this, core, (Rectangle){PANEL_X, PANEL_Y, PANEL_W, PANEL_H});
+  Gui_DrawWorkspacePanel(this, core, (Rectangle){PANEL_X, PANEL_Y, PANEL_W, PANEL_H});
   if (this->showFrameList) {
     Rectangle framelist_rect = {FRAMELIST_X, PANEL_Y, FRAMELIST_W, PANEL_H};
     FrameList_Draw(framelist_rect, &core->currentLog, &this->graphNeedsToChange, &core->logBook);
@@ -275,13 +267,17 @@ static void Gui_DrawToolbar(Gui* this, Core* core) {
               Workspace_PointDiagramLayout(this->workspace));
 }
 
-static void Gui_DrawPanel(Gui* this, Core* core, const Rectangle rect) {
+static void Gui_DrawWorkspacePanel(Gui* this, Core* core, const Rectangle rect) {
   if (this->fileDialogState.windowActive) {
     GuiSetState(STATE_DISABLED);
   }
 
-  GuiScrollPanel(rect, NULL, (Rectangle){.x = 0, .y = 0, .width = 800, .height = 600}, &this->scrollPanelScrollOffset,
-                 &this->scrollPanelView);
+  Vector2 wsSize = Workspace_GetSpaceSize(this->workspace);
+  wsSize.x = (wsSize.x + 140 + 10 > rect.width - BORDER_WIDTH) ? wsSize.x + 140 + 10: rect.width - BORDER_WIDTH;
+  wsSize.y = (wsSize.y + 50 + 10 > rect.height - BORDER_WIDTH) ? wsSize.y + 50 + 10: rect.height - BORDER_WIDTH;
+
+  GuiScrollPanel(rect, NULL, (Rectangle){.x = 0, .y = 0, .width = wsSize.x, .height = wsSize.y},
+                 &this->scrollPanelScrollOffset, &this->scrollPanelView);
 
   GuiSetState(STATE_NORMAL);
   BeginScissorMode(this->scrollPanelView.x, this->scrollPanelView.y,

@@ -17,7 +17,9 @@ typedef struct Workspace {
   size_t selectedNode;
   int diagramLayout;
   Vector2* coordinates;
+  size_t coordinatesSize;
   Vector2* previousCoordinates;
+  size_t previousCoordinatesSize;
 } Workspace;
 
 static void Workspace_DrawDiagram(Workspace* workspace, const Core* core, float procent, const Vector2* scrollOffset);
@@ -79,7 +81,7 @@ void Workspace_Draw(Workspace* workspace, const Core* core, float animationProgr
   if (animationProgress < 1.0) {
     deltaPosition = 0.5 + 0.5 * sinf(animationProgress * 3.14 - 1.57);
   }
-    Workspace_DrawDiagram(workspace, core, deltaPosition, scrollOffset);
+  Workspace_DrawDiagram(workspace, core, deltaPosition, scrollOffset);
 }
 
 void Workspace_BuildLayout(Workspace* workspace, const Graph* graph) {
@@ -87,14 +89,14 @@ void Workspace_BuildLayout(Workspace* workspace, const Graph* graph) {
     free(workspace->previousCoordinates);
     workspace->previousCoordinates = NULL;
   }
-  if (workspace->coordinates != NULL)
-  {
+  if (workspace->coordinates != NULL) {
     workspace->previousCoordinates = workspace->coordinates;
-  }
-  else {
+    workspace->previousCoordinatesSize = workspace->coordinatesSize;
+  } else {
     workspace->previousCoordinates = calloc(graph->nodesSize, sizeof(Vector2));
   }
   workspace->coordinates = calloc(graph->nodesSize, sizeof(Vector2));
+  workspace->coordinatesSize = graph->nodesSize;
   if (workspace->diagramLayout == 0) {
     BuildAbsoluteLayout(workspace->coordinates, graph);
   } else {
@@ -104,10 +106,24 @@ void Workspace_BuildLayout(Workspace* workspace, const Graph* graph) {
     }
     BuildRelativeLayout(workspace->coordinates, graph, centralNode);
   }
-//  if (! workspace->previousCoordinates)
-//  {
-//      workspace->previousCoordinates = workspace->coordinates;
-//  }
+  //  if (! workspace->previousCoordinates)
+  //  {
+  //      workspace->previousCoordinates = workspace->coordinates;
+  //  }
+}
+
+Vector2 Workspace_GetSpaceSize(Workspace* this) {
+  float max_x = 0;
+  float max_y = 0;
+  for (Vector2* it = this->coordinates; it < this->coordinates + this->coordinatesSize; ++it) {
+    if (max_x < it->x) {
+      max_x = it->x;
+    }
+    if (max_y < it->y) {
+      max_y = it->y;
+    }
+  }
+  return (Vector2){max_x, max_y};
 }
 
 static void Workspace_DrawDiagram(Workspace* workspace, const Core* core, float procent, const Vector2* scrollOffset) {
@@ -126,7 +142,7 @@ static void Workspace_DrawDiagram(Workspace* workspace, const Core* core, float 
   for (size_t i = 0; i != nodesSize; ++i) {
     if (i >= oldGraph->nodesSize) {
       drawCoords[i] = newCoords[i];
-    } else if (i >= graph->nodesSize){
+    } else if (i >= graph->nodesSize) {
       drawCoords[i] = oldCoords[i];
     } else {
       drawCoords[i].x = oldCoords[i].x * (1.0 - procent) + newCoords[i].x * procent;
@@ -153,8 +169,9 @@ static void Workspace_DrawDiagram(Workspace* workspace, const Core* core, float 
         break;
     }
 
-    if (GuiButton((Rectangle){drawCoords[i].x + scrollOffset->x, drawCoords[i].y + scrollOffset->y, ds.NODE_W, ds.NODE_H},
-                  LogBook_GetNodeName(&core->logBook, node->nodeName))) {
+    if (GuiButton(
+            (Rectangle){drawCoords[i].x + scrollOffset->x, drawCoords[i].y + scrollOffset->y, ds.NODE_W, ds.NODE_H},
+            LogBook_GetNodeName(&core->logBook, node->nodeName))) {
       workspace->selectedNode = i;
     };
   }
@@ -222,7 +239,7 @@ static void BuildRelativeLayout(Vector2* result, const Graph* graph, const size_
   for (size_t i = 0; i < graph->nodesSize; ++i) {
     levelsOfDependency[i] = UNKNOWN;
   }
-  size_t centralNode = startNode == (size_t) -1 ? 0: startNode;
+  size_t centralNode = startNode == (size_t)-1 ? 0 : startNode;
   DynamicArray* stack = DynamicArray_Make(size_t);
   levelsOfDependency[centralNode] = 0;
   DynamicArray_Push(stack, centralNode);
@@ -303,7 +320,7 @@ static void DrawEdge(const Vector2* coordinates, const Edge* edge, const Vector2
     strip[3].y = scrollOffset->y + coordinates[edge->destination].y + ds.NODE_H / 2;
   }
 
-  // middle point on left side of destination node 
+  // middle point on left side of destination node
   {
     strip[4].x = scrollOffset->x + coordinates[edge->destination].x;
     strip[4].y = strip[3].y;
