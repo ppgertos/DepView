@@ -209,7 +209,7 @@ void Gui_Draw(Gui* this, Core* core) {
 
   this->showFrameList = true;  // TODO: Add button to toolbar to toggle this
 
-  const float FRAMELIST_W = 90;
+  const float FRAMELIST_W = 140;
   const float FRAMELIST_X = this->screenWidth - this->windowMargins.x - FRAMELIST_W;
   const float PANEL_X = this->windowMargins.x;
   const float PANEL_Y = this->windowMargins.y + (this->toolbarHeight + this->windowPaddings.y) * 2;

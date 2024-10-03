@@ -3,6 +3,8 @@
 #include <raygui.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <time.h>
+
 
 void FrameList_Draw(const Rectangle rect, size_t* currentLog, bool* refreshNeeded, const LogBook* logBook) {
   const float CHAR_SIZE = 14;  // TODO: placeholder - should be taken from theme parameters
@@ -14,7 +16,8 @@ void FrameList_Draw(const Rectangle rect, size_t* currentLog, bool* refreshNeede
   BeginScissorMode(visibleRect.x, visibleRect.y, visibleRect.width, visibleRect.height);
   for (int i = 0; i < logBook->entriesSize; ++i) {
     char label[32];
-    sprintf(label, "%ld", logBook->entries[i].timestamp);
+    struct tm* timeInfo = gmtime(&logBook->entries[i].timestamp);
+    strftime(label, 32, "%H:%M:%S %d-%m-%Y", timeInfo);
     if (*currentLog == i) {
       GuiSetState(STATE_PRESSED);
     }
