@@ -272,9 +272,7 @@ static void Gui_DrawWorkspacePanel(Gui* this, Core* core, const Rectangle rect) 
     GuiSetState(STATE_DISABLED);
   }
 
-  Vector2 wsSize = Workspace_GetSpaceSize(this->workspace);
-  wsSize.x = (wsSize.x + 140 + 10 > rect.width - BORDER_WIDTH) ? wsSize.x + 140 + 10: rect.width - BORDER_WIDTH;
-  wsSize.y = (wsSize.y + 50 + 10 > rect.height - BORDER_WIDTH) ? wsSize.y + 50 + 10: rect.height - BORDER_WIDTH;
+  Vector2 wsSize = Workspace_GetSpaceSize(this->workspace, &rect);
 
   GuiScrollPanel(rect, NULL, (Rectangle){.x = 0, .y = 0, .width = wsSize.x, .height = wsSize.y},
                  &this->scrollPanelScrollOffset, &this->scrollPanelView);

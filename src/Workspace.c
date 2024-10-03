@@ -112,10 +112,12 @@ void Workspace_BuildLayout(Workspace* workspace, const Graph* graph) {
   //  }
 }
 
-Vector2 Workspace_GetSpaceSize(Workspace* this) {
+Vector2 Workspace_GetSpaceSize(const Workspace* this, const Rectangle* panelRect) {
+  DiagramStyle ds = DiagramStyle_Default();
   float max_x = 0;
   float max_y = 0;
-  for (Vector2* it = this->coordinates; it < this->coordinates + this->coordinatesSize; ++it) {
+
+  for (const Vector2* it = this->coordinates; it < this->coordinates + this->coordinatesSize; ++it) {
     if (max_x < it->x) {
       max_x = it->x;
     }
@@ -123,7 +125,12 @@ Vector2 Workspace_GetSpaceSize(Workspace* this) {
       max_y = it->y;
     }
   }
-  return (Vector2){max_x, max_y};
+
+  float dynamicWidth = max_x + ds.NODE_W + ds.VERT_PADDING;
+  float dynamicHeight = max_y + ds.NODE_H + ds.HORI_PADDING;
+  return (Vector2){
+      (dynamicWidth > panelRect->width - BORDER_WIDTH) ? dynamicWidth : panelRect->width - BORDER_WIDTH,
+      (dynamicHeight > panelRect->height - BORDER_WIDTH) ? dynamicHeight : panelRect->height - BORDER_WIDTH};
 }
 
 static void Workspace_DrawDiagram(Workspace* workspace, const Core* core, float procent, const Vector2* scrollOffset) {
