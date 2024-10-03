@@ -1,9 +1,10 @@
 typedef struct Workspace Workspace;
 
-typedef struct Core Core;
 typedef struct LogBook LogBook;
 typedef struct Graph Graph;
 typedef struct Vector2 Vector2;
+
+#include "Core.h"
 
 #include <stddef.h>
 
@@ -16,4 +17,4 @@ int* Workspace_PointDiagramLayout(Workspace* this);
 
 void Workspace_BuildLayout(Workspace* workspace, const Graph* graph);
 
-void Workspace_Draw(const Core* core, float animationProgress, const Vector2* scrollOffset);
+void Workspace_Draw(Workspace* this, const Core* core, float animationProgress, const Vector2* scrollOffset);

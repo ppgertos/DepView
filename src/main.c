@@ -33,7 +33,8 @@ int main(int argc, char** argv) {
       .style = 4,
   };
 
-  App_Init(app, conf);
+  App_Init(app);
+  App_Configure(app, conf);
 
   App_Run(app);
 

@@ -12,7 +12,8 @@ typedef struct Config {
 } Config;
 
 size_t App_SizeOf();
-void App_Init(App* app, const Config configuration);
+void App_Init(App* app);
+void App_Configure(App* app, Config config);
 void App_Destroy(App* this);
 
 void App_Run(App* app);

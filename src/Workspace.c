@@ -20,15 +20,7 @@ typedef struct Workspace {
   Vector2* previousCoordinates;
 } Workspace;
 
-typedef struct Core {
-  LogBook logBook;
-  size_t currentLog;
-  Graph oldGraph;
-  Graph currentGraph;
-  Workspace* workspace;
-} Core;
-
-static void DrawDiagram(const Core* core, float procent, const Vector2* scrollOffset);
+static void Workspace_DrawDiagram(Workspace* workspace, const Core* core, float procent, const Vector2* scrollOffset);
 static void BuildAbsoluteLayout(Vector2* result, const Graph* graph);
 static void BuildRelativeLayout(Vector2* result, const Graph* graph, const size_t selectedNode);
 static void DrawEdge(const Vector2* coordinates, const Edge* edge, const Vector2* scrollOffset);
@@ -82,12 +74,12 @@ int* Workspace_PointDiagramLayout(Workspace* this) {
   return &this->diagramLayout;
 }
 
-void Workspace_Draw(const Core* core, float animationProgress, const Vector2* scrollOffset) {
+void Workspace_Draw(Workspace* workspace, const Core* core, float animationProgress, const Vector2* scrollOffset) {
   float deltaPosition = 1.0;
   if (animationProgress < 1.0) {
     deltaPosition = 0.5 + 0.5 * sinf(animationProgress * 3.14 - 1.57);
   }
-  DrawDiagram(core, deltaPosition, scrollOffset);
+    Workspace_DrawDiagram(workspace, core, deltaPosition, scrollOffset);
 }
 
 void Workspace_BuildLayout(Workspace* workspace, const Graph* graph) {
@@ -118,16 +110,16 @@ void Workspace_BuildLayout(Workspace* workspace, const Graph* graph) {
 //  }
 }
 
-static void DrawDiagram(const Core* core, float procent, const Vector2* scrollOffset) {
-  if (!core || !core->workspace) {
+static void Workspace_DrawDiagram(Workspace* workspace, const Core* core, float procent, const Vector2* scrollOffset) {
+  if (!workspace) {
     return;
   }
 
   DiagramStyle ds = DiagramStyle_Default();
   const Graph* graph = &core->currentGraph;
   const Graph* oldGraph = &core->oldGraph;
-  const Vector2* oldCoords = core->workspace->previousCoordinates;
-  const Vector2* newCoords = core->workspace->coordinates;
+  const Vector2* oldCoords = workspace->previousCoordinates;
+  const Vector2* newCoords = workspace->coordinates;
 
   size_t nodesSize = graph->nodesSize < oldGraph->nodesSize ? oldGraph->nodesSize : graph->nodesSize;
   Vector2 drawCoords[nodesSize];
@@ -153,7 +145,7 @@ static void DrawDiagram(const Core* core, float procent, const Vector2* scrollOf
         GuiSetState(STATE_FOCUSED);
         break;
       default:
-        if (i == core->workspace->selectedNode) {
+        if (i == workspace->selectedNode) {
           GuiSetState(STATE_PRESSED);
         } else {
           GuiSetState(STATE_NORMAL);
@@ -163,7 +155,7 @@ static void DrawDiagram(const Core* core, float procent, const Vector2* scrollOf
 
     if (GuiButton((Rectangle){drawCoords[i].x + scrollOffset->x, drawCoords[i].y + scrollOffset->y, ds.NODE_W, ds.NODE_H},
                   LogBook_GetNodeName(&core->logBook, node->nodeName))) {
-      core->workspace->selectedNode = i;
+      workspace->selectedNode = i;
     };
   }
 
